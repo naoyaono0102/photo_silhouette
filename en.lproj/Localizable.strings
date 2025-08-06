@@ -1,0 +1,254 @@
+/* 
+  Localizable.strings
+  photo_silhouette
+
+  Created by 尾野順哉 on 2025/08/06.
+  
+*/
+// 設定画面
+"GENERAL_SETTINGS" = "General Settings";
+"ABOUT_APP" = "About the App";
+"FEEDBACK" = "Feedback & Suggestions";
+"PRIVACY_POLICY" = "Privacy Policy";
+"MORE_APPS_BY_DEVELOPER" = "More apps by developer";
+"FEEDBACK_SUBJECT" = "Feedback & Suggestions for Retro Frame Editor";
+
+
+/* 各画像を確認する */
+"VIEW_EACH_IMAGE" = "View Each Image";
+
+/* 画像サイズ */
+"IMAGE_SIZE" = "Image Size";
+
+/* 固定サイズ */
+"FIXED_SIZE" = "Fixed Size";
+
+/* パーセンテージ */
+"PERCENTAGE" = "Percentage";
+
+/* ファイル形式 */
+"FILE_FORMAT" = "File Format";
+
+/* 画質 */
+"IMAGE_QUALITY" = "Image Quality";
+
+/* 最低画質 */
+"QUALITY_LOWEST" = "Lowest";
+
+/* 低画質 */
+"QUALITY_LOW" = "Low";
+
+/* 標準 */
+"QUALITY_STANDARD" = "Standard";
+
+/* 高画質 */
+"QUALITY_HIGH" = "High";
+
+/* 最高画質 */
+"QUALITY_HIGHEST" = "Highest";
+
+/* Exif情報を残す */
+"KEEP_EXIF_METADATA" = "Keep Exif Metadata";
+
+/* 圧縮前の画像を削除する */
+"DELETE_ORIGINAL_AFTER_SAVE" = "Delete Original After Save";
+
+/* 保存 */
+"SAVE" = "Save";
+
+/* 共有 */
+"SHARE" = "Share";
+
+/* 画像圧縮設定 */
+"IMAGE_COMPRESSION_SETTINGS" = "Image Compression Settings";
+
+/* まとめて圧縮設定 */
+"BATCH_COMPRESSION_SETTINGS" = "Batch Compression Settings";
+
+/* 選択解除 */
+"DESELECT" = "Deselect";
+
+/* ○○枚選択（例：2枚選択） */
+"SELECTED_COUNT" = "%@ Selected";
+
+/* 画像比較（ナビゲーションタイトル） */
+"IMAGE_COMPARISON" = "Image Comparison";
+
+/* アルバム選択 */
+"ALBUM_SELECTION" = "Select Album";
+
+/* 写真読み込み中 */
+"LOADING_IMAGES" = "Loading images...";
+"LOADING_VIDEOS" = "Loading videos...";
+
+/* 最大選択数アラート */
+"MAX_SELECTION_ALERT" = "You can select up to 10 photos only.";
+
+/* 保存中... */
+"SAVING" = "Saving...";
+
+/* 処理中... */
+"PROCESSING" = "Processing...";
+
+/* 保存しました */
+"SAVED_SUCCESSFULLY" = "Saved successfully";
+
+"IMAGE_SAVED_TO_RECENTS" = "*The image is saved to the “Recents” folder.";
+
+"PERMISSION_PHOTO_LIBRARY_DENIED" = "Photo Library access is not permitted.";
+"BUTTON_OPEN_SETTINGS"           = "Open Settings";
+
+
+///////////////////
+// Screen Titles
+"SCREEN_COMPRESSION_SETTINGS" = "Compression Settings";
+"SCREEN_MEDIA_INFO" = "Media Information";
+"SCREEN_BATCH_COMPRESSION" = "Batch Compression (%d)";
+"SCREEN_COMPRESSION_RESULTS_LIST" = "Compression Results List";
+"SCREEN_COMPRESSION_RESULT" = "Compression Result";
+"SCREEN_VIDEOS" = "VIDEOS (%d)";
+"SCREEN_PHOTO_EDITING" = "Photo Editing";
+
+// Button Titles
+"BUTTON_CLOSE" = "Close";
+"BUTTON_SAVE" = "Save";
+"BUTTON_SHARE" = "Share";
+"BUTTON_SAVE_ALL" = "Save All";
+"BUTTON_START_COMPRESSION" = "Start Compression";
+
+// Loading Messages
+"LOADING_COMPRESSING" = "Compressing";
+"LOADING_DONT_CLOSE_APP" = "Please don’t close the app while compressing.";
+
+// Compression Settings Labels
+"LABEL_RESOLUTION" = "Resolution";
+"LABEL_BITRATE" = "Video Bitrate";
+"LABEL_CODEC" = "Codec";
+"LABEL_FILE_FORMAT" = "File Format";
+"LABEL_INCLUDE_AUDIO" = "Include Audio";
+"LABEL_DELETE_ORIGINAL_ON_SAVE" = "Delete Original After Saving";
+
+// Other: Video Selection
+"SELECTION_COUNT_FORMAT" = "%@ Selected";
+
+
+// Toast Messages After Save
+"TOAST_VIDEO_SAVED" = "Saved compressed video";
+"TOAST_ORIGINAL_DELETED" = "Deleted original video";
+
+// Media Info Section
+"LABEL_FILE_INFO" = "File Information";
+"LABEL_CREATION_DATE" = "Creation Date";
+"LABEL_MODIFICATION_DATE" = "Modification Date";
+"LABEL_FILE_NAME" = "File Name";
+"LABEL_FILE_SIZE" = "Size";
+"LABEL_DURATION" = "Duration";
+"LABEL_DEVICE" = "Capture Device";
+
+// Video Info Subsection
+"LABEL_VIDEO_INFO" = "Video Information";
+"LABEL_FRAME_RATE" = "Frame Rate";
+"LABEL_SAMPLE_RATE" = "Sampling Rate";
+"LABEL_CHANNELS" = "Channels";
+
+/* アラートのタイトル */
+"ALERT_RESOLUTION_LIMIT" = "Resolution Limit";
+
+/* アラートのメッセージ */
+"ALERT_RESOLUTION_LIMIT_MESSAGE" = "You cannot select a resolution larger than the original video.";
+
+
+// Button Titles
+"BUTTON_CLOSE" = "Close";
+"BUTTON_SAVE" = "Save";
+"BUTTON_SHARE" = "Share";
+"BUTTON_SAVE_ALL" = "Save All";
+"BUTTON_DESELECT" = "Deselect";
+"BUTTON_DELETE" = "Delete";
+"BUTTON_SELECT_ALL" = "Select All";
+"BUTTON_MERGE" = "Merge";
+
+
+// 画面名
+"SCREEN_TITLE_SPEED_SETTINGS" = "Speed Settings";
+"SCREEN_TITLE_MERGE_SETTINGS" = "Merge Settings";
+"SCREEN_TITLE_MERGE_RESULT" = "Merge Result";
+
+
+
+// 設定項目
+"SETTING_TITLE_FRAME_RATE" = "Frame Rate";
+"SETTING_TITLE_ASPECT_RATIO" = "Aspect Ratio";
+"SETTING_TITLE_FILE_FORMAT" = "File Format";
+"OPTION_PITCH_MUTE" = "Mute Audio";
+"SETTING_TITLE_SCALE_MODE" = "Scale Mode";
+
+"NOTIFICATION_PROCESSING" = "Processing…";
+"NOTIFICATION_SAVED" = "Saved";
+
+// その他
+"REORDER_HINT"         = "*Press and hold to reorder items.";
+
+// コントロールパネル
+"CONTROL_BORDER_WIDTH" = "Border Width";
+"CONTROL_BORDER_COLOR" = "Border Color";
+"CONTROL_BACKGROUND_COLOR" = "Background Color";
+"CONTROL_ROTATION_ANGLE" = "Rotation Angle";
+
+
+"WRITE_REVIEW" = "Write a Review";
+"RATE_WITH_STARS" = "Rate with Stars";
+
+
+/* Localizable.strings (English) */
+"LANGUAGE_SETTINGS" = "Language";
+"LANGUAGE_SYSTEM"   = "Use System";
+"LANGUAGE_ENGLISH"  = "English";
+"LANGUAGE_JAPANESE" = "Japanese";
+"LANGUAGE_KOREAN" = "Korean";
+"LANGUAGE_CHINESE_SIMPLIFIED"   = "Simplified Chinese";
+"LANGUAGE_CHINESE_TRADITIONAL"  = "Traditional Chinese";
+"LANGUAGE_FRENCH" = "French";
+"LANGUAGE_HINDI"  = "Hindi";
+"LANGUAGE_ARABIC" = "Arabic";
+"LANGUAGE_SPANISH"                = "Spanish";
+"LANGUAGE_PORTUGUESE_BRAZIL"      = "Portuguese (Brazil)";
+"LANGUAGE_PORTUGUESE_PORTUGAL"    = "Portuguese (Portugal)";
+"LANGUAGE_RUSSIAN"                = "Russian";
+"LANGUAGE_INDONESIAN"             = "Indonesian";
+"LANGUAGE_THAI"                   = "Thai";
+"LANGUAGE_VIETNAMESE" = "Vietnamese";
+"LANGUAGE_SPANISH_LATIN"   = "Spanish (Latin America)";
+"LANGUAGE_SPANISH_US"      = "Spanish (US)";
+"LANGUAGE_FRENCH_CANADA"   = "French (Canada)";
+"LANGUAGE_MALAY"           = "Malay";
+
+"APPEARANCE_SETTINGS" = "Appearance";
+"APPEARANCE_SYSTEM"   = "Use System";
+"APPEARANCE_LIGHT"    = "Light";
+"APPEARANCE_DARK"     = "Dark";
+
+"SHARE_APP" = "Tell a Friend about App";
+
+"SUPPORT_DEVELOPER"              = "Support the Developer";
+"SUPPORT_DEVELOPER_DIALOG_TITLE" = "Donate to Developer";
+"SUPPORT_THANK_YOU"              = "Thank you for your support!";
+
+"NAV_TITLE_SETTINGS" = "Settings";
+
+//////
+/* 編集項目 */
+"EDIT_LAYOUT"               = "Layout";
+"EDIT_FILTER"               = "Filter";
+"EDIT_DATE"                 = "Date";
+"EDIT_DATE_DISPLAY"         = "Show";
+"EDIT_FRAME_COLOR"          = "Frame Color";
+"EDIT_FRAME_COLOR_SIMPLE"   = "Simple";
+"EDIT_FRAME_COLOR_GRADIENT" = "Gradient";
+
+/* 保存・共有シート */
+"SHEET_ACTION_SELECT"       = "Select Action";
+"SHEET_SAVE"                = "Save";
+"SHEET_SHARE"               = "Share";
+"SHEET_CANCEL"              = "Cancel";
+

@@ -1,0 +1,296 @@
+//
+//import CoreImage
+//import CoreImage.CIFilterBuiltins
+//import Photos
+//import SwiftUI
+//import Vision
+//
+//struct PhotoEditorView: View {
+//    // 入力
+//    private let asset: PHAsset? // PHAsset 経由で渡される場合
+//    private let capturedUIImage: UIImage? // カメラ撮影後に渡される場合
+//
+//    // MARK: - State
+//
+//    @State private var originalImage: UIImage? = nil
+//    @State private var silhouetteImage: UIImage? = nil
+//    @State private var isProcessing = false // 処理中フラグ
+//
+//    // 共有／保存
+//    @State private var showingShareSheet = false
+//    @State private var shareItems: [Any] = []
+//    @State private var showSaveMenu = false
+//    @State private var showSavedToast = false
+//
+//    // 全画面広告
+//    @StateObject private var adViewModel = InterstitialViewModel()
+//
+//    // MARK: - Core Image
+//
+//    private let ciContext = CIContext()
+//    private let thresholdFilter = CIFilter.colorClamp()
+//    private let blendFilter = CIFilter.blendWithMask()
+//
+//    // MARK: — イニシャライザ
+//
+//    /// PHAsset から開く場合
+//    init(asset: PHAsset) {
+//        self.asset = asset
+//        self.capturedUIImage = nil
+//    }
+//
+//    /// カメラ撮影後の UIImage を開く場合
+//    init(capturedUIImage: UIImage) {
+//        self.asset = nil
+//        self.capturedUIImage = capturedUIImage
+//    }
+//
+//    // MARK: — Body
+//
+//    var body: some View {
+//        ZStack {
+//            // 背景色
+//            Color("BackgroundColor")
+//                .ignoresSafeArea()
+//
+//            // メインコンテンツ
+//            VStack(spacing: 0) {
+//                // 1.画像プレビューエリア
+//                previewSection
+//                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+//                    .background(.red)
+//                Spacer()
+//            }
+//
+//            // 保存オーバーレイ
+//            overlayViews
+//        }
+//        .navigationBarSetting(title: "", isVisible: true)
+//        .navigationBarIconSetting(
+//            name: "square.and.arrow.down",
+//            isEnabled: true,
+//            iconPosition: .trailing,
+//            action: onTappedSaveIcon
+//        )
+//        // 確認ダイアログを定義
+//        .confirmationDialog("SHEET_ACTION_SELECT", isPresented: $showSaveMenu, titleVisibility: .visible) {
+//            Button("SHEET_SAVE") { saveImage() }
+//            Button("SHEET_SHARE") { shareImage() }
+//            Button("SHEET_CANCEL", role: .cancel) {}
+//        }
+//        .animation(.easeInOut, value: showSavedToast)
+//        .sheet(isPresented: $showingShareSheet, onDismiss: handleShareDismiss) {
+//            if !shareItems.isEmpty {
+//                ShareSheet(activityItems: shareItems)
+//                    .presentationDetents([.medium])
+//            }
+//        }
+//        .onAppear {
+//            if let img = capturedUIImage {
+//                originalImage = img
+//                processSilhouette(from: img)
+//            } else if let asst = asset {
+//                loadImage(from: asst)
+//            }
+//
+//            // 広告読み込み
+//            Task { await adViewModel.loadAd() }
+//        }
+//    }
+//
+//    // MARK: - 保存処理
+//
+//    private func onTappedSaveIcon() {
+//        showSaveMenu = true
+//    }
+//
+//    private func handleSave() {
+//        // ① ローディングを表示
+//        isProcessing = true
+//    }
+//
+//    // MARK: - UI：プレビューセクション
+//
+//    private var previewSection: some View {
+//        Group {
+//            if let sil = silhouetteImage {
+//                Image(uiImage: sil)
+//                    .resizable()
+//                    .aspectRatio(sil.size, contentMode: .fit)
+//                    .frame(maxWidth: .infinity)
+//            } else if let img = originalImage {
+//                Image(uiImage: img)
+//                    .resizable()
+//                    .aspectRatio(img.size, contentMode: .fit)
+//                    .frame(maxWidth: .infinity)
+//                    .opacity(0.3)
+//            } else {
+//                ProgressView()
+//            }
+//        }
+//        // 必要であれば .padding() を horizontal だけにするなど調整してください
+//    }
+//
+//    // MARK: — 共有処理
+//
+//    // todo
+//    private func handleShare() {
+//        // ① ローディングを表示
+//        isProcessing = true
+//
+//        // ② スナップショット取得はメインスレッドで必ず実行
+//        DispatchQueue.main.async {
+//            // ③ 一時ファイル書き込み→シェアシート呼び出しはメインスレッド or 遅延で OK
+//            let df = DateFormatter()
+//            df.dateFormat = "yyyy_MM_dd"
+//            let name = df.string(from: Date()) + "_" + UUID().uuidString + ".jpg"
+//            let url = FileManager.default.temporaryDirectory.appendingPathComponent(name)
+//
+//            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+//                shareItems = [url]
+//                showingShareSheet = true
+//                isProcessing = false
+//            }
+//        }
+//    }
+//
+//    private func handleShareDismiss() {
+//        showingShareSheet = false
+//        shareItems = []
+//        DispatchQueue.main.async {
+//            if Int.random(in: 1 ... 2) == 1 {
+//                adViewModel.showAd()
+//            }
+//        }
+//    }
+//
+//    // MARK: — トースト・処理中オーバーレイ
+//
+//    @ViewBuilder
+//    private var overlayViews: some View {
+//        if showSavedToast {
+//            Color.black.opacity(0.4).edgesIgnoringSafeArea(.all)
+//            Text("NOTIFICATION_SAVED")
+//                .font(.body)
+//                .padding(24)
+//                .background(Color(UIColor.systemBackground))
+//                .cornerRadius(12)
+//                .shadow(radius: 8)
+//        }
+//
+//        if isProcessing {
+//            Color.black.opacity(0.4).edgesIgnoringSafeArea(.all)
+//            VStack(spacing: 16) {
+//                ProgressView()
+//                Text("NOTIFICATION_PROCESSING").font(.body)
+//            }
+//            .padding(24)
+//            .background(Color(UIColor.systemBackground))
+//            .cornerRadius(12)
+//            .shadow(radius: 8)
+//        }
+//    }
+//
+//    // MARK: — PHAsset から UIImage を読み込む
+//
+//    private func loadImage(from asset: PHAsset) {
+//        let options = PHImageRequestOptions()
+//        options.isSynchronous = false
+//        options.deliveryMode = .highQualityFormat
+//        let targetSize = CGSize(width: asset.pixelWidth, height: asset.pixelHeight)
+//        PHImageManager.default().requestImage(
+//            for: asset,
+//            targetSize: targetSize,
+//            contentMode: .aspectFit,
+//            options: options
+//        ) { image, _ in
+//            guard let img = image else { return }
+//            DispatchQueue.main.async {
+//                originalImage = img
+//                processSilhouette(from: img)
+//            }
+//        }
+//    }
+//
+//    // MARK: — Silhouette Processing
+//
+//    private func processSilhouette(from image: UIImage) {
+//        isProcessing = true
+//        generatePersonMask(from: image) { maskCI in
+//            guard let mask = maskCI,
+//                  let silhouette = createSilhouette(from: image, maskCI: mask)
+//            else {
+//                DispatchQueue.main.async { isProcessing = false }
+//                return
+//            }
+//            DispatchQueue.main.async {
+//                silhouetteImage = silhouette
+//                isProcessing = false
+//            }
+//        }
+//    }
+//
+//    private func generatePersonMask(from uiImage: UIImage, completion: @escaping (CIImage?) -> Void) {
+//        guard let cgImage = uiImage.cgImage else { completion(nil); return }
+//        let request = VNGeneratePersonSegmentationRequest()
+//        request.qualityLevel = .accurate
+//        request.outputPixelFormat = kCVPixelFormatType_OneComponent8
+//        let handler = VNImageRequestHandler(cgImage: cgImage, options: [:])
+//        DispatchQueue.global(qos: .userInitiated).async {
+//            do {
+//                try handler.perform([request])
+//                if let pixelBuffer = request.results?.first?.pixelBuffer {
+//                    completion(CIImage(cvPixelBuffer: pixelBuffer))
+//                } else {
+//                    completion(nil)
+//                }
+//            } catch {
+//                print("Segmentation error: \(error)")
+//                completion(nil)
+//            }
+//        }
+//    }
+//
+//    private func createSilhouette(from original: UIImage, maskCI: CIImage) -> UIImage? {
+//        let ciImage = CIImage(image: original)!
+//        // 黒/白塗りつぶし（マスクをそのまま使用）
+//        let black = CIImage(color: .black).cropped(to: ciImage.extent)
+//        let white = CIImage(color: .white).cropped(to: ciImage.extent)
+//        blendFilter.inputImage = black
+//        blendFilter.backgroundImage = white
+//        blendFilter.maskImage = maskCI
+//        guard let output = blendFilter.outputImage,
+//              let cg = ciContext.createCGImage(output, from: ciImage.extent)
+//        else { return nil }
+//        return UIImage(cgImage: cg)
+//    }
+//
+//    // MARK: — Save / Share
+//
+//    private func saveImage() {
+//        guard let sil = silhouetteImage else { return }
+//        isProcessing = true
+//        UIImageWriteToSavedPhotosAlbum(sil, nil, nil, nil)
+//        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+//            isProcessing = false
+//            showSavedToast = true
+//            DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+//                showSavedToast = false
+//                if Int.random(in: 1 ... 2) == 1 { adViewModel.showAd() }
+//            }
+//        }
+//    }
+//
+//    private func shareImage() {
+//        guard let sil = silhouetteImage else { return }
+//        isProcessing = true
+//        let name = "silhouette_" + UUID().uuidString + ".png"
+//        let url = FileManager.default.temporaryDirectory.appendingPathComponent(name)
+//        if let data = sil.pngData() {
+//            try? data.write(to: url)
+//            shareItems = [url]
+//            showingShareSheet = true
+//        }
+//        isProcessing = false
+//    }
+//}

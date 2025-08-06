@@ -1,0 +1,11 @@
+/* 
+  InfoPlist.strings
+  photo_silhouette
+
+  Created by 尾野順哉 on 2025/08/06.
+  
+*/
+CFBundleDisplayName = "XXXXX";
+NSUserTrackingUsageDescription = "Your data will be used to deliver personalized ads based on your interests rather than random and irrelevant ads.";
+NSPhotoLibraryUsageDescription = "This app requires access to your Photo Library to allow selecting and editing photos.";
+NSCameraUsageDescription = "This app requires access to your camera to allow taking photos for editing.";

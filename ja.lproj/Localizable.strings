@@ -1,0 +1,202 @@
+/* 
+  Localizable.strings
+  photo_silhouette
+
+  Created by 尾野順哉 on 2025/08/06.
+  
+*/
+
+// ── 設定画面 ──
+"GENERAL_SETTINGS"               = "一般";
+"ABOUT_APP"                      = "アプリについて";
+"FEEDBACK"                       = "ご意見・ご要望";
+"PRIVACY_POLICY"                 = "プライバシーポリシー";
+"MORE_APPS_BY_DEVELOPER"         = "開発者の他のアプリ";
+"FEEDBACK_SUBJECT"               = "「ChekiStyle」についてのご意見・ご要望";
+
+
+// ── 各画像を確認する ──
+"VIEW_EACH_IMAGE"                = "各画像を確認する";
+
+// ── 画像サイズ／形式／画質 ──
+"IMAGE_SIZE"                     = "画像サイズ";
+"FIXED_SIZE"                     = "固定サイズ";
+"PERCENTAGE"                     = "パーセンテージ";
+"FILE_FORMAT"                    = "ファイル形式";
+"IMAGE_QUALITY"                  = "画質";
+"QUALITY_LOWEST"                 = "最低画質";
+"QUALITY_LOW"                    = "低画質";
+"QUALITY_STANDARD"               = "標準";
+"QUALITY_HIGH"                   = "高画質";
+"QUALITY_HIGHEST"                = "最高画質";
+"KEEP_EXIF_METADATA"             = "Exif情報を残す";
+"DELETE_ORIGINAL_AFTER_SAVE"     = "圧縮前の画像を削除する";
+
+// ── アクションボタン ──
+"SAVE"                           = "保存";
+"SHARE"                          = "共有";
+"IMAGE_COMPRESSION_SETTINGS"     = "画像圧縮設定";
+"BATCH_COMPRESSION_SETTINGS"     = "まとめて圧縮設定";
+"DESELECT"                       = "選択解除";
+"SELECTED_COUNT"                 = "%@枚選択";
+"IMAGE_COMPARISON"               = "画像比較";
+"ALBUM_SELECTION"                = "アルバム選択";
+
+// ── ローディング＆アラート ──
+"LOADING_IMAGES"                 = "読み込み中…";
+"LOADING_VIDEOS"                 = "読み込み中…";
+"MAX_SELECTION_ALERT"            = "写真は最大10枚まで選択できます";
+"SAVING"                         = "保存中…";
+"PROCESSING"                     = "処理中…";
+"SAVED_SUCCESSFULLY"             = "保存しました";
+"IMAGE_SAVED_TO_RECENTS"          = "*画像は「最近の項目」フォルダに保存されます";
+"PERMISSION_PHOTO_LIBRARY_DENIED"= "写真ライブラリへのアクセスが許可されていません";
+"BUTTON_OPEN_SETTINGS"           = "設定を開く";
+
+
+// ── 画面タイトル ──
+"SCREEN_COMPRESSION_SETTINGS"    = "圧縮設定";
+"SCREEN_MEDIA_INFO"              = "メディア情報";
+"SCREEN_BATCH_COMPRESSION"       = "一括圧縮（%d）";
+"SCREEN_COMPRESSION_RESULTS_LIST"= "圧縮結果一覧";
+"SCREEN_COMPRESSION_RESULT"      = "圧縮結果";
+"SCREEN_VIDEOS"                  = "動画 (%d)";
+"SCREEN_PHOTO_EDITING"           = "画像編集";
+
+
+// ── ボタンタイトル ──
+"BUTTON_CLOSE"                   = "閉じる";
+"BUTTON_SAVE" = "保存";
+"BUTTON_SAVE_ALL"                = "一括保存";
+"BUTTON_START_COMPRESSION"       = "圧縮開始";
+"BUTTON_DELETE"                  = "削除";
+"BUTTON_SELECT_ALL"              = "すべて選択";
+"BUTTON_MERGE"                   = "結合";
+"BUTTON_SHARE" = "共有";
+"BUTTON_DESELECT" = "選択解除";
+
+
+// ── ローディングメッセージ ──
+"LOADING_COMPRESSING"            = "圧縮中";
+"LOADING_DONT_CLOSE_APP"         = "圧縮中はアプリを閉じないでください。";
+
+// ── 圧縮設定ラベル ──
+"LABEL_RESOLUTION"               = "解像度";
+"LABEL_BITRATE"                  = "動画ビットレート";
+"LABEL_CODEC"                    = "コーデック";
+"LABEL_FILE_FORMAT"              = "ファイル形式";
+"LABEL_INCLUDE_AUDIO"            = "音声を含める";
+"LABEL_DELETE_ORIGINAL_ON_SAVE"  = "保存時に元動画を削除";
+
+// ── 動画選択（本数） ──
+"SELECTION_COUNT_FORMAT"         = "%@本選択";
+
+// ── 保存完了トースト（動画） ──
+"TOAST_VIDEO_SAVED"              = "圧縮した動画を保存しました";
+"TOAST_ORIGINAL_DELETED"         = "元動画を削除しました";
+
+
+// ── メディア情報セクション ──
+"LABEL_FILE_INFO"                = "ファイル情報";
+"LABEL_CREATION_DATE"            = "作成日";
+"LABEL_MODIFICATION_DATE"        = "更新日";
+"LABEL_FILE_NAME"                = "ファイル名";
+"LABEL_FILE_SIZE"                = "サイズ";
+"LABEL_DURATION"                 = "長さ";
+"LABEL_DEVICE"                   = "撮影デバイス";
+
+// ── 動画情報サブセクション ──
+"LABEL_VIDEO_INFO"               = "映像情報";
+"LABEL_FRAME_RATE"               = "フレームレート";
+"LABEL_SAMPLE_RATE"              = "サンプリングレート";
+"LABEL_CHANNELS"                 = "チャンネル";
+
+// ── アラート ──
+"ALERT_RESOLUTION_LIMIT"         = "解像度の上限";
+"ALERT_RESOLUTION_LIMIT_MESSAGE" = "元動画より大きい解像度は選択できません";
+
+
+// ── 追加画面タイトル ──
+"SCREEN_TITLE_SPEED_SETTINGS"    = "速度設定変更";
+"SCREEN_TITLE_MERGE_SETTINGS"    = "動画結合設定";
+"SCREEN_TITLE_MERGE_RESULT"      = "結合結果";
+
+
+// ── 設定項目 ──
+"SETTING_TITLE_FRAME_RATE"       = "フレームレート";
+"SETTING_TITLE_ASPECT_RATIO"     = "動画の縦横比";
+"SETTING_TITLE_FILE_FORMAT"      = "ファイル形式";
+"OPTION_PITCH_MUTE"              = "音声なし";
+"SETTING_TITLE_SCALE_MODE"       = "動画の見え方";
+
+// ── 通知 ──
+"NOTIFICATION_PROCESSING"        = "処理中…";
+"NOTIFICATION_SAVED"             = "保存しました";
+
+// ── その他ヒント ──
+"REORDER_HINT"                   = "*順番を入れ替える場合は対象の動画を長押しして左右に移動させてください。";
+
+// ── コントロールパネル ──
+"CONTROL_BORDER_WIDTH"           = "枠線の太さ";
+"CONTROL_BORDER_COLOR"           = "枠線の色";
+"CONTROL_BACKGROUND_COLOR"       = "背景色";
+"CONTROL_ROTATION_ANGLE"         = "回転角度";
+
+// ── レビュー ──
+"WRITE_REVIEW"                   = "レビューを書く";
+"RATE_WITH_STARS"                = "星の数で評価する";
+
+
+// ── 言語設定一覧 ──
+"LANGUAGE_SETTINGS"              = "言語設定";
+"LANGUAGE_SYSTEM"                = "端末の設定";
+"LANGUAGE_ENGLISH"               = "英語";
+"LANGUAGE_JAPANESE"              = "日本語";
+"LANGUAGE_KOREAN"                = "韓国語";
+"LANGUAGE_CHINESE_SIMPLIFIED"    = "中国語（簡体字）";
+"LANGUAGE_CHINESE_TRADITIONAL"   = "中国語（繁体字）";
+"LANGUAGE_FRENCH"                = "フランス語";
+"LANGUAGE_FRENCH_CANADA"         = "フランス語（カナダ）";
+"LANGUAGE_SPANISH"               = "スペイン語";
+"LANGUAGE_SPANISH_LATIN"         = "スペイン語（ラテン米）";
+"LANGUAGE_SPANISH_US"            = "スペイン語（米国）";
+"LANGUAGE_PORTUGUESE_BRAZIL"     = "ポルトガル語（ブラジル）";
+"LANGUAGE_PORTUGUESE_PORTUGAL"   = "ポルトガル語（ポルトガル）";
+"LANGUAGE_RUSSIAN"               = "ロシア語";
+"LANGUAGE_INDONESIAN"            = "インドネシア語";
+"LANGUAGE_MALAY"                 = "マレー語";
+"LANGUAGE_THAI"                  = "タイ語";
+"LANGUAGE_VIETNAMESE"            = "ベトナム語";
+"LANGUAGE_HINDI"  = "ヒンディー語";
+"LANGUAGE_ARABIC" = "アラビア語";
+
+// ── 外観モード ──
+"APPEARANCE_SETTINGS"            = "外観モード";
+"APPEARANCE_SYSTEM"              = "端末の設定";
+"APPEARANCE_LIGHT"               = "ライト";
+"APPEARANCE_DARK"                = "ダーク";
+
+// ── その他メニュー ──
+"SHARE_APP"                      = "アプリを友達に教える";
+"SUPPORT_DEVELOPER"              = "開発者を支援する";
+"SUPPORT_DEVELOPER_DIALOG_TITLE" = "開発者へ寄付";
+"SUPPORT_THANK_YOU"              = "ご支援ありがとうございます！";
+"NAV_TITLE_SETTINGS"             = "設定";
+
+
+////
+/* 編集項目 */
+"EDIT_LAYOUT"               = "レイアウト";
+"EDIT_FILTER"               = "フィルター";
+"EDIT_DATE"                 = "日付";
+"EDIT_DATE_DISPLAY"         = "表示";
+"EDIT_FRAME_COLOR"          = "フレームカラー";
+"EDIT_FRAME_COLOR_SIMPLE"   = "シンプル";
+"EDIT_FRAME_COLOR_GRADIENT" = "グラデーション";
+
+/* 保存・共有シート */
+"SHEET_ACTION_SELECT"       = "操作を選択";
+"SHEET_SAVE"                = "保存";
+"SHEET_SHARE"               = "共有";
+"SHEET_CANCEL"              = "キャンセル";
+
