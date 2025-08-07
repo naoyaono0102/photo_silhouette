@@ -3,6 +3,7 @@ import CoreImage
 import CoreImage.CIFilterBuiltins
 import Photos
 import SwiftUI
+import UIKit
 import Vision
 
 struct PhotoEditorView: View {
@@ -30,6 +31,22 @@ struct PhotoEditorView: View {
 
     // 全画面広告
     @StateObject private var adViewModel = InterstitialViewModel()
+
+    /// 単位は“px”
+    // 既存の targetWidthPx, targetHeightPx は「プレビューに反映される値」として使う
+    @State private var targetWidthPx: Double = 300
+    @State private var targetHeightPx: Double = 300
+
+    // 新規：テキストフィールドにバインドする“編集中の値”
+    @State private var editingWidthPx: Double = 300
+    @State private var editingHeightPx: Double = 300
+
+    ///  縦横比固定モードを切り替え
+    @State private var lockAspect: Bool = true
+
+    // どの TextField がフォーカス中かを管理
+    private enum Field { case width, height }
+    @FocusState private var focusedField: Field?
 
     // MARK: - Core Image
 
@@ -61,8 +78,12 @@ struct PhotoEditorView: View {
 
             // メインコンテンツ
             VStack(spacing: 0) {
+                // 0. サイズパネル
+                sizePanel
+
                 // 1.画像プレビューエリア
                 previewSection
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
                     .background(.gray)
 
                 // 2. コントロールパネル
@@ -78,6 +99,29 @@ struct PhotoEditorView: View {
             // 保存オーバーレイ
             overlayViews
         }
+        // 画面外タップでキーボードを閉じる
+        .contentShape(Rectangle()) // ZStack 全体をタップ対象に
+        .onTapGesture {
+            UIApplication.shared.endEditing()
+        }
+        // キーボード上部にツールバーを追加
+        .toolbar {
+            ToolbarItemGroup(placement: .keyboard) {
+                Spacer()
+                Button("完了") {
+                    focusedField = nil
+                }
+            }
+        }
+        // キーボードを閉じたら縦横サイズを反映
+        .onChange(of: focusedField) { new in
+            // フォーカスがなくなった（＝完了ボタン or 画面外タップ）とき
+            if new == nil {
+                targetWidthPx = editingWidthPx
+                targetHeightPx = editingHeightPx
+            }
+        }
+        .ignoresSafeArea(.keyboard, edges: .bottom) // コンテンツの上にキーボードをかぶせる
         .navigationBarSetting(title: "", isVisible: true)
         .navigationBarIconSetting(name: "arrow.clockwise",
                                   isEnabled: true,
@@ -91,8 +135,12 @@ struct PhotoEditorView: View {
             }
         }
         .onAppear {
+            editingWidthPx = targetWidthPx
+            editingHeightPx = targetHeightPx
+
             if let img = capturedUIImage {
                 originalImage = img
+                initSizeFromImage(img)
                 processSilhouette(from: img)
             } else if let asst = asset {
                 loadImage(from: asst)
@@ -112,6 +160,43 @@ struct PhotoEditorView: View {
     private func handleSave() {
         // ① ローディングを表示
         isProcessing = true
+    }
+
+    // MARK: - 画像の初期サイズをセット
+
+    /// UIImage の pixel サイズを State にセットする
+    private func initSizeFromImage(_ img: UIImage) {
+        // UIImage.size は pt 単位なので、scale を掛けて px 単位に戻す
+        let pixelWidth = Double(img.size.width * img.scale)
+        let pixelHeight = Double(img.size.height * img.scale)
+        targetWidthPx = pixelWidth
+        targetHeightPx = pixelHeight
+        editingWidthPx = pixelWidth
+        editingHeightPx = pixelHeight
+    }
+
+    // MARK: - サイズ調整
+
+    private var sizePanel: some View {
+        HStack(spacing: 16) {
+            VStack {
+                Text("幅 (px)")
+                TextField("", value: $editingWidthPx, format: .number)
+                    .focused($focusedField, equals: .width)
+                    .keyboardType(.numberPad)
+                    .textFieldStyle(.roundedBorder)
+            }
+            VStack {
+                Text("高さ (px)")
+                TextField("", value: $editingHeightPx, format: .number)
+                    .focused($focusedField, equals: .height)
+                    .keyboardType(.numberPad)
+                    .textFieldStyle(.roundedBorder)
+            }
+            Toggle("縦横比固定", isOn: $lockAspect)
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 8)
     }
 
     // MARK: - UI：プレビューセクション
@@ -172,41 +257,113 @@ struct PhotoEditorView: View {
 
     // MARK: — Preview Section
 
+//    private var previewSection: some View {
+//        GeometryReader { geo in
+//            let width = geo.size.width
+//
+//            VStack(spacing: 0) {
+//                Spacer()
+//
+//                // 写真エリア
+//                if let img = silhouetteImage ?? originalImage {
+//                    // 画像のアスペクト比を維持してサイズ計算
+//                    let aspect = img.size.width/img.size.height
+//                    let height = width/aspect
+//
+//                    ZStack {
+//                        // チェッカーボード背景
+//                        CheckerboardView()
+//                            .frame(width: width, height: height)
+//                        // 画像表示
+//                        Image(uiImage: img)
+//                            .resizable()
+//                            .aspectRatio(contentMode: .fit)
+//                            .opacity(silhouetteImage == nil ? 0.3 : 1.0)
+//                    }
+//                    .clipped()
+    ////                    .frame(width: width, height: height, alignment: .center)
+//                } else {
+//                    ProgressView()
+//                        .frame(width: width)
+//                }
+//
+//                Spacer()
+//            }
+//        }
+//    }
+
+//    private var previewSection: some View {
+//        let scale = UIScreen.main.scale
+//        // px → pt に変換
+//        let widthPt  = CGFloat(targetWidthPx)  / scale
+//        let heightPt = CGFloat(targetHeightPx) / scale
+//
+//        return VStack {
+//            Spacer()
+//            if let img = silhouetteImage ?? originalImage {
+//                // アスペクト比固定なら自動計算
+//                let aspect = img.size.width/img.size.height
+//                let finalHeightPt = lockAspect
+//                    ? widthPt/aspect
+//                    : heightPt
+//
+//                ZStack {
+//                    CheckerboardView()
+//                        .frame(width: widthPt, height: finalHeightPt)
+//                    Image(uiImage: img)
+//                        .resizable()
+//                        .scaledToFill()
+//                        .frame(width: widthPt, height: finalHeightPt)
+//                        .clipped()
+//                }
+//            } else {
+//                ProgressView()
+//                    .frame(width: widthPt, height: heightPt)
+//            }
+//            Spacer()
+//        }
+//    }
+
     private var previewSection: some View {
         GeometryReader { geo in
-            let width = geo.size.width
-
-            VStack(spacing: 0) {
-                Spacer()
-
-                // 写真エリア
-                if let img = silhouetteImage ?? originalImage {
-                    // 画像のアスペクト比を維持してサイズ計算
-                    let aspect = img.size.width/img.size.height
-                    let height = width/aspect
-
+            // まずは画像があるかチェック
+            if let img = silhouetteImage ?? originalImage {
+                // 画像あり：サイズ計算＋表示
+                let maxW       = geo.size.width
+                let maxH       = geo.size.height
+                let scale      = UIScreen.main.scale
+                let desiredWpt = CGFloat(targetWidthPx)  / scale
+                let desiredHpt = CGFloat(targetHeightPx) / scale
+                let displayW   = min(desiredWpt, maxW)
+                let aspect     = img.size.width / img.size.height
+                let displayH   = lockAspect
+                ? displayW / aspect
+                : min(desiredHpt, maxH)
+                
+                VStack {
+                    Spacer()
                     ZStack {
-                        // チェッカーボード背景
                         CheckerboardView()
-                            .frame(width: width, height: height)
-                        // 画像表示
+                            .frame(width: displayW, height: displayH)
                         Image(uiImage: img)
                             .resizable()
-                            .aspectRatio(contentMode: .fit)
-                            .opacity(silhouetteImage == nil ? 0.3 : 1.0)
+                            .scaledToFill()
+                            .frame(width: displayW, height: displayH)
+                            .clipped()
                     }
-                    .clipped()
-//                    .frame(width: width, height: height, alignment: .center)
-                } else {
-                    ProgressView()
-                        .frame(width: width)
+                    Spacer()
                 }
-
-                Spacer()
+                .frame(width: maxW, height: maxH)
+                .clipped()
+            } else {
+                // 画像なし：プログレスインジケーターなど
+                ProgressView()
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .background(Color.gray.opacity(0.2))
             }
         }
-
-        // 写真のサイズ
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(Color.gray)
     }
 
     // MARK: — Control Panel Section：編集メニュー
@@ -479,6 +636,7 @@ struct PhotoEditorView: View {
             guard let img = image else { return }
             DispatchQueue.main.async {
                 originalImage = img
+                initSizeFromImage(img)
                 processSilhouette(from: img)
             }
         }
@@ -589,30 +747,79 @@ struct PhotoEditorView: View {
 
     // MARK: — Save / Share
 
+//    private func saveImage() {
+//        guard let sil = silhouetteImage else { return }
+//        isProcessing = true
+//        UIImageWriteToSavedPhotosAlbum(sil, nil, nil, nil)
+//        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+//            isProcessing = false
+//            showSavedToast = true
+//            DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+//                showSavedToast = false
+//                if Int.random(in: 1 ... 2) == 1 { adViewModel.showAd() }
+//            }
+//        }
+//    }
+//
+//    private func shareImage() {
+//        guard let sil = silhouetteImage else { return }
+//        isProcessing = true
+//        let name = "silhouette_" + UUID().uuidString + ".png"
+//        let url = FileManager.default.temporaryDirectory.appendingPathComponent(name)
+//        if let data = sil.pngData() {
+//            try? data.write(to: url)
+//            shareItems = [url]
+//            showingShareSheet = true
+//        }
+//        isProcessing = false
+//    }
+
+    /// UIImage を指定ピクセルサイズにリサイズするヘルパー
+    private func resized(_ img: UIImage) -> UIImage {
+        // lockAspect なら widthPx から自動計算、そうでなければ heightPx も使う
+        let w = targetWidthPx
+        let h = lockAspect
+            ? w * (img.size.height/img.size.width)
+            : targetHeightPx
+        let size = CGSize(width: w, height: h)
+        let renderer = UIGraphicsImageRenderer(size: size)
+        return renderer.image { _ in
+            img.draw(in: CGRect(origin: .zero, size: size))
+        }
+    }
+
     private func saveImage() {
         guard let sil = silhouetteImage else { return }
         isProcessing = true
-        UIImageWriteToSavedPhotosAlbum(sil, nil, nil, nil)
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-            isProcessing = false
-            showSavedToast = true
-            DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
-                showSavedToast = false
-                if Int.random(in: 1 ... 2) == 1 { adViewModel.showAd() }
-            }
-        }
+        let output = resized(sil)
+        UIImageWriteToSavedPhotosAlbum(output, nil, nil, nil)
+        // ...トースト表示など既存ロジック
     }
 
     private func shareImage() {
         guard let sil = silhouetteImage else { return }
         isProcessing = true
-        let name = "silhouette_" + UUID().uuidString + ".png"
-        let url = FileManager.default.temporaryDirectory.appendingPathComponent(name)
-        if let data = sil.pngData() {
+        let output = resized(sil)
+        let name = "silhouette_\(UUID().uuidString).png"
+        let url = FileManager.default.temporaryDirectory
+            .appendingPathComponent(name)
+        if let data = output.pngData() {
             try? data.write(to: url)
             shareItems = [url]
             showingShareSheet = true
         }
         isProcessing = false
+    }
+}
+
+extension UIApplication {
+    /// キーボードを閉じる
+    func endEditing() {
+        sendAction(
+            #selector(UIResponder.resignFirstResponder),
+            to: nil,
+            from: nil,
+            for: nil
+        )
     }
 }
