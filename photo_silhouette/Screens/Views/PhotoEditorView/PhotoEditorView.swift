@@ -42,7 +42,7 @@ struct PhotoEditorView: View {
     @State private var editingHeightPx: Double = 300
 
     ///  縦横比固定モードを切り替え
-    @State private var lockAspect: Bool = true
+    @State private var lockAspect: Bool = false
 
     // どの TextField がフォーカス中かを管理
     private enum Field { case width, height }
@@ -67,6 +67,12 @@ struct PhotoEditorView: View {
         self.asset = nil
         self.capturedUIImage = capturedUIImage
     }
+
+    @State private var zoomScale: CGFloat = 1.0
+    @State private var lastZoomScale: CGFloat = 1.0
+
+    @State private var dragOffset: CGSize = .zero
+    @State private var lastDragOffset: CGSize = .zero
 
     // MARK: — Body
 
@@ -329,28 +335,52 @@ struct PhotoEditorView: View {
             // まずは画像があるかチェック
             if let img = silhouetteImage ?? originalImage {
                 // 画像あり：サイズ計算＋表示
-                let maxW       = geo.size.width
-                let maxH       = geo.size.height
-                let scale      = UIScreen.main.scale
-                let desiredWpt = CGFloat(targetWidthPx)  / scale
-                let desiredHpt = CGFloat(targetHeightPx) / scale
-                let displayW   = min(desiredWpt, maxW)
-                let aspect     = img.size.width / img.size.height
-                let displayH   = lockAspect
-                ? displayW / aspect
-                : min(desiredHpt, maxH)
-                
+                let maxW = geo.size.width
+                let maxH = geo.size.height
+                let scale = UIScreen.main.scale
+                let desiredWpt = CGFloat(targetWidthPx)/scale
+                let desiredHpt = CGFloat(targetHeightPx)/scale
+                let displayW = min(desiredWpt, maxW)
+                let aspect = img.size.width/img.size.height
+                let displayH = lockAspect
+                    ? displayW/aspect
+                    : min(desiredHpt, maxH)
+
                 VStack {
                     Spacer()
                     ZStack {
+                        // ■ 背景は固定 ■
                         CheckerboardView()
                             .frame(width: displayW, height: displayH)
+                        
+                        // ■ ここだけに拡大・移動を適用 ■
                         Image(uiImage: img)
                             .resizable()
                             .scaledToFill()
                             .frame(width: displayW, height: displayH)
                             .clipped()
-                    }
+                            .scaleEffect(zoomScale, anchor: .center)
+                            .offset(dragOffset)
+                                        }
+                    .contentShape(Rectangle()) // 見えない部分も捕捉
+                    .gesture(DragGesture(minimumDistance: 0)
+                        .onChanged { value in
+                            dragOffset = CGSize(
+                                width: lastDragOffset.width + value.translation.width,
+                                height: lastDragOffset.height + value.translation.height
+                            )
+                        }
+                        .onEnded { _ in lastDragOffset = dragOffset }
+                    )
+                    .simultaneousGesture(
+                        MagnificationGesture()
+                            .onChanged { value in
+                                zoomScale = lastZoomScale * value
+                            }
+                            .onEnded { _ in lastZoomScale = zoomScale }
+                    )
+                    .animation(.interactiveSpring(), value: zoomScale)
+                    .animation(.interactiveSpring(), value: dragOffset)
                     Spacer()
                 }
                 .frame(width: maxW, height: maxH)
@@ -526,9 +556,18 @@ struct PhotoEditorView: View {
     }
 
     private func reset() {
+        // ① 画像自体は元のシルエットに戻す
         if let base = baseSilhouetteImage {
             silhouetteImage = base
         }
+        // ② ズーム・オフセット状態をリセット
+        zoomScale = 1.0
+        lastZoomScale = 1.0
+        dragOffset = .zero
+        lastDragOffset = .zero
+        // （必要なら回転・反転もリセット）
+        rotationAngle = .zero
+        scaleX = 1; scaleY = 1
     }
 
     // MARK: - Image Transforms
