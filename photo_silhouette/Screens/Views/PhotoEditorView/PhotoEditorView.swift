@@ -9,62 +9,62 @@ struct PhotoEditorView: View {
     // 入力
     private let asset: PHAsset? // PHAsset 経由で渡される場合
     private let capturedUIImage: UIImage? // カメラ撮影後に渡される場合
-    
+
     // MARK: - State
+
     @State private var originalImage: UIImage? = nil
     @State private var silhouetteImage: UIImage? = nil
     @State private var baseSilhouetteImage: UIImage? = nil
     @State private var isProcessing = false // 処理中フラグ
-    
-    
+
     // 共有／保存
     @State private var showingShareSheet = false
     @State private var shareItems: [Any] = []
     @State private var showSaveMenu = false
     @State private var showSavedToast = false
-    
+
     // 追加: 回転・反転状態
     @State private var rotationAngle: Angle = .zero
     @State private var scaleX: CGFloat = 1
     @State private var scaleY: CGFloat = 1
-    
+
     // 全画面広告
     @StateObject private var adViewModel = InterstitialViewModel()
-    
+
     // MARK: - Core Image
-    
+
     private let ciContext = CIContext()
     private let thresholdFilter = CIFilter.colorClamp()
     private let blendFilter = CIFilter.blendWithMask()
-    
+
     // MARK: — イニシャライザ
-    
+
     /// PHAsset から開く場合
     init(asset: PHAsset) {
         self.asset = asset
         self.capturedUIImage = nil
     }
-    
+
     /// カメラ撮影後の UIImage を開く場合
     init(capturedUIImage: UIImage) {
         self.asset = nil
         self.capturedUIImage = capturedUIImage
     }
-    
+
     // MARK: — Body
-    
+
     var body: some View {
         ZStack {
             // 背景色
             Color("BackgroundColor")
                 .ignoresSafeArea()
-            
+
             // メインコンテンツ
             VStack(spacing: 0) {
                 // 1.画像プレビューエリア
                 previewSection
-                    .frame(maxWidth: .infinity)
-                
+                    .background(.gray)
+
                 // 2. コントロールパネル
                 controlPanel
                     .padding(.horizontal, 16)
@@ -74,7 +74,7 @@ struct PhotoEditorView: View {
                     .padding(.bottom, 5)
                     .padding(.horizontal, 16)
             }
-            
+
             // 保存オーバーレイ
             overlayViews
         }
@@ -97,79 +97,79 @@ struct PhotoEditorView: View {
             } else if let asst = asset {
                 loadImage(from: asst)
             }
-            
+
             // 広告読み込み
             Task { await adViewModel.loadAd() }
         }
     }
-    
+
     // MARK: - 保存処理
-    
+
     private func onTappedSaveIcon() {
         showSaveMenu = true
     }
-    
+
     private func handleSave() {
         // ① ローディングを表示
         isProcessing = true
     }
-    
+
     // MARK: - UI：プレビューセクション
-    
-//    private var previewSection: some View {
-//        Group {
-//            if let sil = silhouetteImage {
-//                ZStack {
-//                    CheckerboardView()
-//                    Image(uiImage: sil)
-//                        .resizable()
-//                        .aspectRatio(sil.size, contentMode: .fit)
-//                        .frame(maxWidth: .infinity)
-//                }
-//            } else if let img = originalImage {
-//                Image(uiImage: img)
-//                    .resizable()
-//                    .aspectRatio(img.size, contentMode: .fit)
-//                    .frame(maxWidth: .infinity)
-//                    .opacity(0.3)
-//            } else {
-//                ProgressView()
-//            }
-//        }
-//        // 必要であれば .padding() を horizontal だけにするなど調整してください
-//    }
-    
-//    private var previewSection: some View {
-//        Group {
-//            if let sil = silhouetteImage {
-//                // アスペクト比を保持しつつ、チェックボードとシルエットを同じフレームで重ねる
-//                GeometryReader { geo in
-//                    let aspect = sil.size.width / sil.size.height
-//                    let width = geo.size.width
-//                    let height = width / aspect
-//                    VStack(spacing: 0) {
-//                        Spacer()
-//                        ZStack {
-//                            CheckerboardView()
-//                            Image(uiImage: sil)
-//                                .resizable()
-//                                .scaledToFit()
-//                        }
-//                        .frame(width: width, height: height)
-//
-//                    }
-//                }
-//            } else if let img = originalImage {
-//                Image(uiImage: img)
-//                    .resizable()
-//                    .scaledToFit()
-//                    .opacity(0.3)
-//            } else {
-//                ProgressView()
-//            }
-//        }
-//    }
-    
+
+    //    private var previewSection: some View {
+    //        Group {
+    //            if let sil = silhouetteImage {
+    //                ZStack {
+    //                    CheckerboardView()
+    //                    Image(uiImage: sil)
+    //                        .resizable()
+    //                        .aspectRatio(sil.size, contentMode: .fit)
+    //                        .frame(maxWidth: .infinity)
+    //                }
+    //            } else if let img = originalImage {
+    //                Image(uiImage: img)
+    //                    .resizable()
+    //                    .aspectRatio(img.size, contentMode: .fit)
+    //                    .frame(maxWidth: .infinity)
+    //                    .opacity(0.3)
+    //            } else {
+    //                ProgressView()
+    //            }
+    //        }
+    //        // 必要であれば .padding() を horizontal だけにするなど調整してください
+    //    }
+
+    //    private var previewSection: some View {
+    //        Group {
+    //            if let sil = silhouetteImage {
+    //                // アスペクト比を保持しつつ、チェックボードとシルエットを同じフレームで重ねる
+    //                GeometryReader { geo in
+    //                    let aspect = sil.size.width / sil.size.height
+    //                    let width = geo.size.width
+    //                    let height = width / aspect
+    //                    VStack(spacing: 0) {
+    //                        Spacer()
+    //                        ZStack {
+    //                            CheckerboardView()
+    //                            Image(uiImage: sil)
+    //                                .resizable()
+    //                                .scaledToFit()
+    //                        }
+    //                        .frame(width: width, height: height)
+    //
+    //                    }
+    //                }
+    //            } else if let img = originalImage {
+    //                Image(uiImage: img)
+    //                    .resizable()
+    //                    .scaledToFit()
+    //                    .opacity(0.3)
+    //            } else {
+    //                ProgressView()
+    //            }
+    //        }
+    //    }
+
     // MARK: — Preview Section
 
     private var previewSection: some View {
@@ -177,11 +177,14 @@ struct PhotoEditorView: View {
             let width = geo.size.width
 
             VStack(spacing: 0) {
+                Spacer()
+
+                // 写真エリア
                 if let img = silhouetteImage ?? originalImage {
                     // 画像のアスペクト比を維持してサイズ計算
                     let aspect = img.size.width/img.size.height
                     let height = width/aspect
-                 
+
                     ZStack {
                         // チェッカーボード背景
                         CheckerboardView()
@@ -190,24 +193,24 @@ struct PhotoEditorView: View {
                         Image(uiImage: img)
                             .resizable()
                             .aspectRatio(contentMode: .fit)
-                            .frame(width: width, height: height)
                             .opacity(silhouetteImage == nil ? 0.3 : 1.0)
                     }
                     .clipped()
-                    // 上寄せで配置
-                    .frame(width: width, height: height, alignment: .top)
+//                    .frame(width: width, height: height, alignment: .center)
                 } else {
                     ProgressView()
                         .frame(width: width)
                 }
+
                 Spacer()
             }
         }
-        .frame(maxWidth: .infinity)
+
+        // 写真のサイズ
     }
-    
+
     // MARK: — Control Panel Section：編集メニュー
-    
+
     private var controlPanel: some View {
         // —— プレビュー下に「左右反転」「上下反転」「90度回転」ボタンを並べる
         HStack {
@@ -224,9 +227,9 @@ struct PhotoEditorView: View {
                         .layoutPriority(1) // 他のビューより優先してスペースを使う
                 }
             }
-            
+
             Spacer()
-            
+
             Button(action: flipHorizontal) {
                 VStack(spacing: 5) {
                     Image(systemName: "arrow.left.and.right.righttriangle.left.righttriangle.right")
@@ -239,9 +242,9 @@ struct PhotoEditorView: View {
                         .layoutPriority(1) // 他のビューより優先してスペースを使う
                 }
             }
-            
+
             Spacer()
-            
+
             Button(action: flipVertical) {
                 VStack(spacing: 5) {
                     Image(systemName: "arrow.up.and.down.righttriangle.up.righttriangle.down")
@@ -254,9 +257,9 @@ struct PhotoEditorView: View {
                         .layoutPriority(1) // 他のビューより優先してスペースを使う
                 }
             }
-            
+
             Spacer()
-            
+
             // 右90°回転ボタン
             Button(action: rotateRight) {
                 VStack(spacing: 5) {
@@ -276,9 +279,9 @@ struct PhotoEditorView: View {
         .padding(.horizontal, 8)
         .padding(.bottom, 6)
     }
-    
+
     // MARK: — 保存／共有ボタン
-    
+
     private var actionButtons: some View {
         HStack(spacing: 20) {
             Button(action: saveImage) {
@@ -292,7 +295,7 @@ struct PhotoEditorView: View {
             }
             .buttonStyle(.borderedProminent)
             .tint(.blue)
-            
+
             Button(action: shareImage) {
                 HStack {
                     Image(systemName: "square.and.arrow.up")
@@ -307,66 +310,72 @@ struct PhotoEditorView: View {
         }
         .padding(.bottom, 10)
     }
-    
+
     // MARK: — Transformation Actions
 
-//    private func rotateLeft() {
-//        guard let img = silhouetteImage else { return }
-//        silhouetteImage = transformed(image: img, rotation: -.pi/2)
-//    }
-//
-//    private func rotateRight() {
-//        guard let img = silhouetteImage else { return }
-//        silhouetteImage = transformed(image: img, rotation: .pi/2)
-//    }
-//
-//    private func flipHorizontal() {
-//        guard let img = silhouetteImage else { return }
-//        silhouetteImage = flipped(image: img, horizontal: true)
-//    }
-//
-//    private func flipVertical() {
-//        guard let img = silhouetteImage else { return }
-//        silhouetteImage = flipped(image: img, horizontal: false)
-//    }
-//    
-//    private func transformed(image: UIImage, rotation: CGFloat) -> UIImage? {
-//        let size = CGSize(width: image.size.height, height: image.size.width)
-//        let renderer = UIGraphicsImageRenderer(size: size)
-//        return renderer.image { ctx in
-//            ctx.cgContext.translateBy(x: size.width/2, y: size.height/2)
-//            ctx.cgContext.rotate(by: rotation)
-//            image.draw(in: CGRect(x: -image.size.width/2,
-//                                  y: -image.size.height/2,
-//                                  width: image.size.width,
-//                                  height: image.size.height))
-//        }
-//    }
-    
+    //    private func rotateLeft() {
+    //        guard let img = silhouetteImage else { return }
+    //        silhouetteImage = transformed(image: img, rotation: -.pi/2)
+    //    }
+    //
+    //    private func rotateRight() {
+    //        guard let img = silhouetteImage else { return }
+    //        silhouetteImage = transformed(image: img, rotation: .pi/2)
+    //    }
+    //
+    //    private func flipHorizontal() {
+    //        guard let img = silhouetteImage else { return }
+    //        silhouetteImage = flipped(image: img, horizontal: true)
+    //    }
+    //
+    //    private func flipVertical() {
+    //        guard let img = silhouetteImage else { return }
+    //        silhouetteImage = flipped(image: img, horizontal: false)
+    //    }
+    //
+    //    private func transformed(image: UIImage, rotation: CGFloat) -> UIImage? {
+    //        let size = CGSize(width: image.size.height, height: image.size.width)
+    //        let renderer = UIGraphicsImageRenderer(size: size)
+    //        return renderer.image { ctx in
+    //            ctx.cgContext.translateBy(x: size.width/2, y: size.height/2)
+    //            ctx.cgContext.rotate(by: rotation)
+    //            image.draw(in: CGRect(x: -image.size.width/2,
+    //                                  y: -image.size.height/2,
+    //                                  width: image.size.width,
+    //                                  height: image.size.height))
+    //        }
+    //    }
+
     // MARK: - Transform Actions
+
     private func rotateLeft() {
         guard let img = silhouetteImage else { return }
         silhouetteImage = transformed(image: img, rotation: -.pi/2)
     }
+
     private func rotateRight() {
         guard let img = silhouetteImage else { return }
         silhouetteImage = transformed(image: img, rotation: .pi/2)
     }
+
     private func flipHorizontal() {
         guard let img = silhouetteImage else { return }
         silhouetteImage = flipped(image: img, horizontal: true)
     }
+
     private func flipVertical() {
         guard let img = silhouetteImage else { return }
         silhouetteImage = flipped(image: img, horizontal: false)
     }
+
     private func reset() {
         if let base = baseSilhouetteImage {
             silhouetteImage = base
         }
     }
-    
+
     // MARK: - Image Transforms
+
     private func transformed(image: UIImage, rotation: CGFloat) -> UIImage? {
         let size = CGSize(width: image.size.height, height: image.size.width)
         let renderer = UIGraphicsImageRenderer(size: size)
@@ -379,6 +388,7 @@ struct PhotoEditorView: View {
                                   height: image.size.height))
         }
     }
+
     private func flipped(image: UIImage, horizontal: Bool) -> UIImage? {
         let renderer = UIGraphicsImageRenderer(size: image.size)
         return renderer.image { ctx in
@@ -393,14 +403,13 @@ struct PhotoEditorView: View {
         }
     }
 
-
     // MARK: — 共有処理
-    
+
     // todo
     private func handleShare() {
         // ① ローディングを表示
         isProcessing = true
-        
+
         // ② スナップショット取得はメインスレッドで必ず実行
         DispatchQueue.main.async {
             // ③ 一時ファイル書き込み→シェアシート呼び出しはメインスレッド or 遅延で OK
@@ -408,7 +417,7 @@ struct PhotoEditorView: View {
             df.dateFormat = "yyyy_MM_dd"
             let name = df.string(from: Date()) + "_" + UUID().uuidString + ".jpg"
             let url = FileManager.default.temporaryDirectory.appendingPathComponent(name)
-            
+
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
                 shareItems = [url]
                 showingShareSheet = true
@@ -416,7 +425,7 @@ struct PhotoEditorView: View {
             }
         }
     }
-    
+
     private func handleShareDismiss() {
         showingShareSheet = false
         shareItems = []
@@ -426,9 +435,9 @@ struct PhotoEditorView: View {
             }
         }
     }
-    
+
     // MARK: — トースト・処理中オーバーレイ
-    
+
     @ViewBuilder
     private var overlayViews: some View {
         if showSavedToast {
@@ -440,7 +449,7 @@ struct PhotoEditorView: View {
                 .cornerRadius(12)
                 .shadow(radius: 8)
         }
-        
+
         if isProcessing {
             Color.black.opacity(0.4).edgesIgnoringSafeArea(.all)
             VStack(spacing: 16) {
@@ -453,9 +462,9 @@ struct PhotoEditorView: View {
             .shadow(radius: 8)
         }
     }
-    
+
     // MARK: — PHAsset から UIImage を読み込む
-    
+
     private func loadImage(from asset: PHAsset) {
         let options = PHImageRequestOptions()
         options.isSynchronous = false
@@ -474,9 +483,9 @@ struct PhotoEditorView: View {
             }
         }
     }
-    
+
     // MARK: — Silhouette Processing
-    
+
     private func processSilhouette(from image: UIImage) {
         isProcessing = true
         generatePersonMask(from: image) { maskCI in
@@ -493,14 +502,13 @@ struct PhotoEditorView: View {
             }
         }
     }
-    
-        
+
     private func generatePersonMask(from uiImage: UIImage, completion: @escaping (CIImage?) -> Void) {
         guard let cgImage = uiImage.cgImage else { completion(nil); return }
         let request = VNGeneratePersonSegmentationRequest()
         request.qualityLevel = .accurate
         request.outputPixelFormat = kCVPixelFormatType_OneComponent8
-        
+
         let handler = VNImageRequestHandler(cgImage: cgImage, options: [:])
         DispatchQueue.global(qos: .userInitiated).async {
             do {
@@ -516,46 +524,46 @@ struct PhotoEditorView: View {
             }
         }
     }
-    
-//    private func createSilhouette(from original: UIImage, maskCI: CIImage) -> UIImage? {
-//        let ciImage = CIImage(image: original)!
-//        // 黒/白塗りつぶし（マスクをそのまま使用）
-//        let black = CIImage(color: .black).cropped(to: ciImage.extent)
-//        let white = CIImage(color: .white).cropped(to: ciImage.extent)
-//        blendFilter.inputImage = black
-//        blendFilter.backgroundImage = white
-//        blendFilter.maskImage = maskCI
-//        guard let output = blendFilter.outputImage,
-//              let cg = ciContext.createCGImage(output, from: ciImage.extent)
-//        else { return nil }
-//        return UIImage(cgImage: cg)
-//    }
-    
-//    private func createSilhouette(from original: UIImage, maskCI: CIImage) -> UIImage? {
-//        let ciImage = CIImage(image: original)!
-//        // マスクを元画像サイズにスケーリング
-//        let maskExtent = maskCI.extent
-//        let scaleX = ciImage.extent.width / maskExtent.width
-//        let scaleY = ciImage.extent.height / maskExtent.height
-//        let scaledMask = maskCI.transformed(by: CGAffineTransform(scaleX: scaleX, y: scaleY))
-//
-//        // 二値化
-//        thresholdFilter.inputImage = scaledMask
-//        thresholdFilter.minComponents = CIVector(x: 0.5, y: 0.5, z: 0.5, w: 0.5)
-//        thresholdFilter.maxComponents = CIVector(x: 1,   y: 1,   z: 1,   w: 1)
-//        guard let binaryMask = thresholdFilter.outputImage else { return nil }
-//        // 黒/白塗りつぶし
-//        let black = CIImage(color: .black).cropped(to: ciImage.extent)
-//        let white = CIImage(color: .white).cropped(to: ciImage.extent)
-//        blendFilter.inputImage = black
-//        blendFilter.backgroundImage = white
-//        blendFilter.maskImage = binaryMask
-//        guard let output = blendFilter.outputImage,
-//              let cg = ciContext.createCGImage(output, from: ciImage.extent)
-//        else { return nil }
-//        return UIImage(cgImage: cg)
-//    }
-    
+
+    //    private func createSilhouette(from original: UIImage, maskCI: CIImage) -> UIImage? {
+    //        let ciImage = CIImage(image: original)!
+    //        // 黒/白塗りつぶし（マスクをそのまま使用）
+    //        let black = CIImage(color: .black).cropped(to: ciImage.extent)
+    //        let white = CIImage(color: .white).cropped(to: ciImage.extent)
+    //        blendFilter.inputImage = black
+    //        blendFilter.backgroundImage = white
+    //        blendFilter.maskImage = maskCI
+    //        guard let output = blendFilter.outputImage,
+    //              let cg = ciContext.createCGImage(output, from: ciImage.extent)
+    //        else { return nil }
+    //        return UIImage(cgImage: cg)
+    //    }
+
+    //    private func createSilhouette(from original: UIImage, maskCI: CIImage) -> UIImage? {
+    //        let ciImage = CIImage(image: original)!
+    //        // マスクを元画像サイズにスケーリング
+    //        let maskExtent = maskCI.extent
+    //        let scaleX = ciImage.extent.width / maskExtent.width
+    //        let scaleY = ciImage.extent.height / maskExtent.height
+    //        let scaledMask = maskCI.transformed(by: CGAffineTransform(scaleX: scaleX, y: scaleY))
+    //
+    //        // 二値化
+    //        thresholdFilter.inputImage = scaledMask
+    //        thresholdFilter.minComponents = CIVector(x: 0.5, y: 0.5, z: 0.5, w: 0.5)
+    //        thresholdFilter.maxComponents = CIVector(x: 1,   y: 1,   z: 1,   w: 1)
+    //        guard let binaryMask = thresholdFilter.outputImage else { return nil }
+    //        // 黒/白塗りつぶし
+    //        let black = CIImage(color: .black).cropped(to: ciImage.extent)
+    //        let white = CIImage(color: .white).cropped(to: ciImage.extent)
+    //        blendFilter.inputImage = black
+    //        blendFilter.backgroundImage = white
+    //        blendFilter.maskImage = binaryMask
+    //        guard let output = blendFilter.outputImage,
+    //              let cg = ciContext.createCGImage(output, from: ciImage.extent)
+    //        else { return nil }
+    //        return UIImage(cgImage: cg)
+    //    }
+
     private func createSilhouette(from original: UIImage, maskCI: CIImage) -> UIImage? {
         // 元画像と同じ解像度・向きでCIImage作成
         let ciImage = CIImage(image: original)!
@@ -564,14 +572,14 @@ struct PhotoEditorView: View {
         let scaleX = ciImage.extent.width/maskExtent.width
         let scaleY = ciImage.extent.height/maskExtent.height
         let scaledMask = maskCI.transformed(by: CGAffineTransform(scaleX: scaleX, y: scaleY))
-        
+
         // 黒いシルエット生成、背景は透明
         let blackImage = CIImage(color: .black).cropped(to: ciImage.extent)
         let transparentImage = CIImage(color: .clear).cropped(to: ciImage.extent)
         blendFilter.inputImage = blackImage
         blendFilter.backgroundImage = transparentImage
         blendFilter.maskImage = scaledMask
-        
+
         // 合成してUIImage化
         guard let outputCI = blendFilter.outputImage,
               let cgImg = ciContext.createCGImage(outputCI, from: ciImage.extent)
@@ -580,7 +588,7 @@ struct PhotoEditorView: View {
     }
 
     // MARK: — Save / Share
-    
+
     private func saveImage() {
         guard let sil = silhouetteImage else { return }
         isProcessing = true
@@ -594,7 +602,7 @@ struct PhotoEditorView: View {
             }
         }
     }
-    
+
     private func shareImage() {
         guard let sil = silhouetteImage else { return }
         isProcessing = true

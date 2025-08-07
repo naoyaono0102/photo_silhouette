@@ -11,7 +11,7 @@ import SwiftUI
 
 struct CheckerboardView: View {
     /// タイル１辺のサイズ
-    let squareSize: CGFloat = 12
+    let squareSize: CGFloat = 10
     var body: some View {
         GeometryReader { geo in
             let rows = Int(ceil(geo.size.height / squareSize))

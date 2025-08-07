@@ -8,7 +8,6 @@
 import Photos
 import SwiftUI
 
-
 struct GalleryView: View {
     @StateObject private var viewModel = PhotoLibraryViewModel()
     @Binding var navigationPath: [NavigationItem]
