@@ -200,3 +200,7 @@
 "SHEET_SHARE"               = "共有";
 "SHEET_CANCEL"              = "キャンセル";
 
+"LEFT_ROTATION" = "左回転";
+"FLIP_HORIZONTAL" = "左右反転";
+"FLIP_VERTICAL" = "上下反転";
+"RIGHT_ROTATION" = "右回転";

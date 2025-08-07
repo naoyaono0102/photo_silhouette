@@ -57,9 +57,16 @@ struct PhotoEditorView: View {
             VStack(spacing: 0) {
                 // 1.画像プレビューエリア
                 previewSection
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-//                    .background(.red)
-                Spacer()
+                    .frame(maxWidth: .infinity)
+                
+                // 2. コントロールパネル
+                controlPanel
+                    .padding(.horizontal, 16)
+
+                // 3. 保存、共有ボタン
+                actionButtons
+                    .padding(.bottom, 5)
+                    .padding(.horizontal, 16)
             }
             
             // 保存オーバーレイ
@@ -170,11 +177,13 @@ struct PhotoEditorView: View {
     private var previewSection: some View {
         GeometryReader { geo in
             let width = geo.size.width
+
             VStack(spacing: 0) {
                 if let img = silhouetteImage ?? originalImage {
                     // 画像のアスペクト比を維持してサイズ計算
-                    let aspect = img.size.width / img.size.height
-                    let height = width / aspect
+                    let aspect = img.size.width/img.size.height
+                    let height = width/aspect
+                 
                     ZStack {
                         // チェッカーボード背景
                         CheckerboardView()
@@ -199,6 +208,156 @@ struct PhotoEditorView: View {
         .frame(maxWidth: .infinity)
     }
     
+    // MARK: — Control Panel Section：編集メニュー
+    
+    private var controlPanel: some View {
+        // —— プレビュー下に「左右反転」「上下反転」「90度回転」ボタンを並べる
+        HStack {
+            // 左90°回転ボタン
+            Button(action: rotateLeft) {
+                VStack(spacing: 5) {
+                    Image(systemName: "rotate.left")
+                        .font(.title2)
+                    Text("LEFT_ROTATION")
+                        .font(.footnote)
+                        .lineLimit(1) // 必ず一行に制限
+                        .minimumScaleFactor(0.5) // 最大で半分のサイズまで縮小
+                        .allowsTightening(true) // 文字間を詰めて表示
+                        .layoutPriority(1) // 他のビューより優先してスペースを使う
+                }
+            }
+            
+            Spacer()
+            
+            Button(action: flipHorizontal) {
+                VStack(spacing: 5) {
+                    Image(systemName: "arrow.left.and.right.righttriangle.left.righttriangle.right")
+                        .font(.title2)
+                    Text("FLIP_HORIZONTAL")
+                        .font(.footnote)
+                        .lineLimit(1) // 必ず一行に制限
+                        .minimumScaleFactor(0.5) // 最大で半分のサイズまで縮小
+                        .allowsTightening(true) // 文字間を詰めて表示
+                        .layoutPriority(1) // 他のビューより優先してスペースを使う
+                }
+            }
+            
+            Spacer()
+            
+            Button(action: flipVertical) {
+                VStack(spacing: 5) {
+                    Image(systemName: "arrow.up.and.down.righttriangle.up.righttriangle.down")
+                        .font(.title2)
+                    Text("FLIP_VERTICAL")
+                        .font(.footnote)
+                        .lineLimit(1) // 必ず一行に制限
+                        .minimumScaleFactor(0.5) // 最大で半分のサイズまで縮小
+                        .allowsTightening(true) // 文字間を詰めて表示
+                        .layoutPriority(1) // 他のビューより優先してスペースを使う
+                }
+            }
+            
+            Spacer()
+            
+            // 右90°回転ボタン
+            Button(action: rotateRight) {
+                VStack(spacing: 5) {
+                    Image(systemName: "rotate.right")
+                        .font(.title2)
+                    Text("RIGHT_ROTATION")
+                        .font(.footnote)
+                        .lineLimit(1) // 必ず一行に制限
+                        .minimumScaleFactor(0.5) // 最大で半分のサイズまで縮小
+                        .allowsTightening(true) // 文字間を詰めて表示
+                        .layoutPriority(1) // 他のビューより優先してスペースを使う
+                }
+            }
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 8)
+        .padding(.horizontal, 8)
+    }
+    
+    // MARK: — 保存／共有ボタン
+    
+    private var actionButtons: some View {
+        HStack(spacing: 20) {
+            Button(action: saveImage) {
+                HStack {
+                    Image(systemName: "square.and.arrow.down")
+                        .foregroundColor(.white)
+                    Text("BUTTON_SAVE")
+                }
+                .frame(maxWidth: .infinity)
+                .frame(height: 40)
+            }
+            .buttonStyle(.borderedProminent)
+            .tint(.blue)
+            
+            Button(action: shareImage) {
+                HStack {
+                    Image(systemName: "square.and.arrow.up")
+                        .foregroundColor(.white)
+                    Text("BUTTON_SHARE")
+                }
+                .frame(maxWidth: .infinity)
+                .frame(height: 40)
+            }
+            .buttonStyle(.borderedProminent)
+            .tint(.blue)
+        }
+        .padding(.bottom, 10)
+    }
+    
+    // MARK: — Transformation Actions
+
+    private func rotateLeft() {
+        guard let img = silhouetteImage else { return }
+        silhouetteImage = transformed(image: img, rotation: -.pi/2)
+    }
+
+    private func rotateRight() {
+        guard let img = silhouetteImage else { return }
+        silhouetteImage = transformed(image: img, rotation: .pi/2)
+    }
+
+    private func flipHorizontal() {
+        guard let img = silhouetteImage else { return }
+        silhouetteImage = flipped(image: img, horizontal: true)
+    }
+
+    private func flipVertical() {
+        guard let img = silhouetteImage else { return }
+        silhouetteImage = flipped(image: img, horizontal: false)
+    }
+    
+    private func transformed(image: UIImage, rotation: CGFloat) -> UIImage? {
+        let size = CGSize(width: image.size.height, height: image.size.width)
+        let renderer = UIGraphicsImageRenderer(size: size)
+        return renderer.image { ctx in
+            ctx.cgContext.translateBy(x: size.width/2, y: size.height/2)
+            ctx.cgContext.rotate(by: rotation)
+            image.draw(in: CGRect(x: -image.size.width/2,
+                                  y: -image.size.height/2,
+                                  width: image.size.width,
+                                  height: image.size.height))
+        }
+    }
+
+    private func flipped(image: UIImage, horizontal: Bool) -> UIImage? {
+        let renderer = UIGraphicsImageRenderer(size: image.size)
+        return renderer.image { ctx in
+            if horizontal {
+                ctx.cgContext.translateBy(x: image.size.width, y: 0)
+                ctx.cgContext.scaleBy(x: -1, y: 1)
+            } else {
+                ctx.cgContext.translateBy(x: 0, y: image.size.height)
+                ctx.cgContext.scaleBy(x: 1, y: -1)
+            }
+            image.draw(at: .zero)
+        }
+    }
+
     // MARK: — 共有処理
     
     // todo
@@ -364,8 +523,8 @@ struct PhotoEditorView: View {
         let ciImage = CIImage(image: original)!
         // マスクを元画像サイズにスケーリング
         let maskExtent = maskCI.extent
-        let scaleX = ciImage.extent.width / maskExtent.width
-        let scaleY = ciImage.extent.height / maskExtent.height
+        let scaleX = ciImage.extent.width/maskExtent.width
+        let scaleY = ciImage.extent.height/maskExtent.height
         let scaledMask = maskCI.transformed(by: CGAffineTransform(scaleX: scaleX, y: scaleY))
         
         // 黒いシルエット生成、背景は透明

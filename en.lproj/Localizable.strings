@@ -252,3 +252,8 @@
 "SHEET_SHARE"               = "Share";
 "SHEET_CANCEL"              = "Cancel";
 
+
+"LEFT_ROTATION" = "Rotate Left";
+"FLIP_HORIZONTAL" = "Flip Horizontal";
+"FLIP_VERTICAL" = "Flip Vertical";
+"RIGHT_ROTATION" = "Rotate Right";
