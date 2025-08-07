@@ -11,16 +11,22 @@ struct PhotoEditorView: View {
     private let capturedUIImage: UIImage? // カメラ撮影後に渡される場合
     
     // MARK: - State
-    
     @State private var originalImage: UIImage? = nil
     @State private var silhouetteImage: UIImage? = nil
+    @State private var baseSilhouetteImage: UIImage? = nil
     @State private var isProcessing = false // 処理中フラグ
+    
     
     // 共有／保存
     @State private var showingShareSheet = false
     @State private var shareItems: [Any] = []
     @State private var showSaveMenu = false
     @State private var showSavedToast = false
+    
+    // 追加: 回転・反転状態
+    @State private var rotationAngle: Angle = .zero
+    @State private var scaleX: CGFloat = 1
+    @State private var scaleY: CGFloat = 1
     
     // 全画面広告
     @StateObject private var adViewModel = InterstitialViewModel()
@@ -73,18 +79,10 @@ struct PhotoEditorView: View {
             overlayViews
         }
         .navigationBarSetting(title: "", isVisible: true)
-        .navigationBarIconSetting(
-            name: "square.and.arrow.down",
-            isEnabled: true,
-            iconPosition: .trailing,
-            action: onTappedSaveIcon
-        )
-        // 確認ダイアログを定義
-        .confirmationDialog("SHEET_ACTION_SELECT", isPresented: $showSaveMenu, titleVisibility: .visible) {
-            Button("SHEET_SAVE") { saveImage() }
-            Button("SHEET_SHARE") { shareImage() }
-            Button("SHEET_CANCEL", role: .cancel) {}
-        }
+        .navigationBarIconSetting(name: "arrow.clockwise",
+                                  isEnabled: true,
+                                  iconPosition: .trailing,
+                                  action: reset)
         .animation(.easeInOut, value: showSavedToast)
         .sheet(isPresented: $showingShareSheet, onDismiss: handleShareDismiss) {
             if !shareItems.isEmpty {
@@ -276,6 +274,7 @@ struct PhotoEditorView: View {
         .frame(maxWidth: .infinity)
         .padding(.vertical, 8)
         .padding(.horizontal, 8)
+        .padding(.bottom, 6)
     }
     
     // MARK: — 保存／共有ボタン
@@ -311,26 +310,63 @@ struct PhotoEditorView: View {
     
     // MARK: — Transformation Actions
 
+//    private func rotateLeft() {
+//        guard let img = silhouetteImage else { return }
+//        silhouetteImage = transformed(image: img, rotation: -.pi/2)
+//    }
+//
+//    private func rotateRight() {
+//        guard let img = silhouetteImage else { return }
+//        silhouetteImage = transformed(image: img, rotation: .pi/2)
+//    }
+//
+//    private func flipHorizontal() {
+//        guard let img = silhouetteImage else { return }
+//        silhouetteImage = flipped(image: img, horizontal: true)
+//    }
+//
+//    private func flipVertical() {
+//        guard let img = silhouetteImage else { return }
+//        silhouetteImage = flipped(image: img, horizontal: false)
+//    }
+//    
+//    private func transformed(image: UIImage, rotation: CGFloat) -> UIImage? {
+//        let size = CGSize(width: image.size.height, height: image.size.width)
+//        let renderer = UIGraphicsImageRenderer(size: size)
+//        return renderer.image { ctx in
+//            ctx.cgContext.translateBy(x: size.width/2, y: size.height/2)
+//            ctx.cgContext.rotate(by: rotation)
+//            image.draw(in: CGRect(x: -image.size.width/2,
+//                                  y: -image.size.height/2,
+//                                  width: image.size.width,
+//                                  height: image.size.height))
+//        }
+//    }
+    
+    // MARK: - Transform Actions
     private func rotateLeft() {
         guard let img = silhouetteImage else { return }
         silhouetteImage = transformed(image: img, rotation: -.pi/2)
     }
-
     private func rotateRight() {
         guard let img = silhouetteImage else { return }
         silhouetteImage = transformed(image: img, rotation: .pi/2)
     }
-
     private func flipHorizontal() {
         guard let img = silhouetteImage else { return }
         silhouetteImage = flipped(image: img, horizontal: true)
     }
-
     private func flipVertical() {
         guard let img = silhouetteImage else { return }
         silhouetteImage = flipped(image: img, horizontal: false)
     }
+    private func reset() {
+        if let base = baseSilhouetteImage {
+            silhouetteImage = base
+        }
+    }
     
+    // MARK: - Image Transforms
     private func transformed(image: UIImage, rotation: CGFloat) -> UIImage? {
         let size = CGSize(width: image.size.height, height: image.size.width)
         let renderer = UIGraphicsImageRenderer(size: size)
@@ -343,7 +379,6 @@ struct PhotoEditorView: View {
                                   height: image.size.height))
         }
     }
-
     private func flipped(image: UIImage, horizontal: Bool) -> UIImage? {
         let renderer = UIGraphicsImageRenderer(size: image.size)
         return renderer.image { ctx in
@@ -357,6 +392,7 @@ struct PhotoEditorView: View {
             image.draw(at: .zero)
         }
     }
+
 
     // MARK: — 共有処理
     
@@ -452,11 +488,13 @@ struct PhotoEditorView: View {
             }
             DispatchQueue.main.async {
                 silhouetteImage = silhouette
+                baseSilhouetteImage = silhouette
                 isProcessing = false
             }
         }
     }
     
+        
     private func generatePersonMask(from uiImage: UIImage, completion: @escaping (CIImage?) -> Void) {
         guard let cgImage = uiImage.cgImage else { completion(nil); return }
         let request = VNGeneratePersonSegmentationRequest()
