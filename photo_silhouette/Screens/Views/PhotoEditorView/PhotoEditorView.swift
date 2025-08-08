@@ -17,8 +17,10 @@ struct PhotoEditorView: View {
     @State private var silhouetteImage: UIImage? = nil
     @State private var baseSilhouetteImage: UIImage? = nil
     @State private var isProcessing = false // 処理中フラグ
-    @State private var previewFramePt: CGSize = .zero
-    
+
+    @State private var previewContainerPt: CGSize = .zero   // 追加：プレビュー領域そのものの実寸(pt)
+    @State private var previewFramePt: CGSize = .zero       // 既存：フレーム実寸(pt)
+
     // 共有／保存
     @State private var showingShareSheet = false
     @State private var shareItems: [Any] = []
@@ -408,28 +410,28 @@ struct PhotoEditorView: View {
         GeometryReader { geo in
             // 1) ユーザー指定 px → pt
             let scale = UIScreen.main.scale
-            let desiredW = CGFloat(targetWidthPx) / scale
-            let desiredH = CGFloat(targetHeightPx) / scale
-            
+            let desiredW = CGFloat(targetWidthPx)/scale
+            let desiredH = CGFloat(targetHeightPx)/scale
+
             // 2) プレビューの表示領域（pt）
             let maxW = geo.size.width
             let maxH = geo.size.height
-            
+
             // 3) フレーム比を保ったまま、画面にはみ出ない最大サイズを算出
-            let frameRatio  = desiredW / desiredH
-            let screenRatio = maxW / maxH
-            
+            let frameRatio = desiredW/desiredH
+            let screenRatio = maxW/maxH
+
             let displayW: CGFloat = frameRatio > screenRatio
-            ? min(desiredW, maxW)                  // 横を合わせる
-            : min(desiredH * frameRatio, maxW)     // 縦基準で横を決める
-            
+                ? min(desiredW, maxW) // 横を合わせる
+                : min(desiredH * frameRatio, maxW) // 縦基準で横を決める
+
             let displayH: CGFloat = frameRatio > screenRatio
-            ? displayW / frameRatio                // 横に合わせたので高さは比率から
-            : min(desiredH, maxH)                  // 縦を合わせる
-            
+                ? displayW/frameRatio // 横に合わせたので高さは比率から
+                : min(desiredH, maxH) // 縦を合わせる
+
             ZStack {
                 Color.gray // previewSection 全体の背景
-                
+
                 VStack {
                     Spacer()
                     // ← この ZStack が「ユーザーが指定したフレーム」(displayW x displayH)
@@ -439,18 +441,18 @@ struct PhotoEditorView: View {
                             Image(uiImage: img)
                                 .resizable()
                                 .aspectRatio(contentMode: .fit) // フレーム内で元比を維持
-                                .scaleEffect(zoomScale)         // 画像に拡大縮小
-                                .offset(dragOffset)             // 画像にパン
+                                .scaleEffect(zoomScale) // 画像に拡大縮小
+                                .offset(dragOffset) // 画像にパン
                         }
                     }
                     .frame(width: displayW, height: displayH) // ★ フレームの実サイズをここで固定
-                    .clipped()                                // ★ 枠からはみ出した部分は描かない
-                    .contentShape(Rectangle())                // 透明部分もタップ可
+                    .clipped() // ★ 枠からはみ出した部分は描かない
+                    .contentShape(Rectangle()) // 透明部分もタップ可
                     .gesture(
                         DragGesture(minimumDistance: 0)
                             .onChanged { v in
                                 dragOffset = CGSize(
-                                    width:  lastDragOffset.width  + v.translation.width,
+                                    width: lastDragOffset.width + v.translation.width,
                                     height: lastDragOffset.height + v.translation.height
                                 )
                             }
@@ -459,20 +461,40 @@ struct PhotoEditorView: View {
                     .simultaneousGesture(
                         MagnificationGesture()
                             .onChanged { v in zoomScale = lastZoomScale * v }
-                            .onEnded   { _ in lastZoomScale = zoomScale }
+                            .onEnded { _ in lastZoomScale = zoomScale }
                     )
                     // フレーム実寸（pt）を保存（エクスポート時の pt→px 換算で使用）
                     .onAppear { previewFramePt = CGSize(width: displayW, height: displayH) }
                     .onChange(of: displayW) { _ in previewFramePt = CGSize(width: displayW, height: displayH) }
                     .onChange(of: displayH) { _ in previewFramePt = CGSize(width: displayW, height: displayH) }
-                    
+
                     Spacer()
                 }
                 .frame(width: maxW, height: maxH)
             }
+            // ★ ここ（外側）で「プレビューコンテナ実寸」を安定して取得
+            .background(
+                GeometryReader { p in
+                    Color.clear
+                        .onAppear {
+                            previewContainerPt = p.size
+                            previewFramePt = recalcFramePt(container: p.size)
+                        }
+                        .onChange(of: p.size) { newSize in
+                            previewContainerPt = newSize
+                            previewFramePt = recalcFramePt(container: newSize)
+                        }
+                }
+            )
+            // 入力が変わったらフレーム実寸を再計算
+            .onChange(of: targetWidthPx) { _ in
+                previewFramePt = recalcFramePt(container: previewContainerPt)
+            }
+            .onChange(of: targetHeightPx) { _ in
+                previewFramePt = recalcFramePt(container: previewContainerPt)
+            }
         }
     }
-
 
     // MARK: — Control Panel Section：編集メニュー
 
@@ -980,6 +1002,7 @@ struct PhotoEditorView: View {
             UIImageWriteToSavedPhotosAlbum(img, nil, nil, nil)
             showSavedToast = true
         }
+
         isProcessing = false
     }
 
@@ -1039,6 +1062,27 @@ struct PhotoEditorView: View {
             img.draw(at: .zero)
         }
     }
+    
+    /// 現在のコンテナ実寸とユーザー指定 px から、
+    /// プレビューで実際に使うフレーム実寸(pt)を再計算する
+    private func recalcFramePt(container: CGSize) -> CGSize {
+        guard container.width > 0, container.height > 0 else { return .zero }
+        let scale = UIScreen.main.scale
+        let desiredW = CGFloat(targetWidthPx) / scale   // 指定px → pt
+        let desiredH = CGFloat(targetHeightPx) / scale
+        
+        let frameRatio  = desiredW / desiredH
+        let screenRatio = container.width / container.height
+        
+        if frameRatio > screenRatio {
+            let w = min(desiredW, container.width)
+            return CGSize(width: w, height: w / frameRatio)
+        } else {
+            let h = min(desiredH, container.height)
+            return CGSize(width: h * frameRatio, height: h)
+        }
+    }
+
 
     /// 出力用のビュー。透明な背景の上にシルエットを配置し、
     /// プレビューとまったく同じ transform（scale・offset・回転・反転）が反映される。
@@ -1064,56 +1108,48 @@ struct PhotoEditorView: View {
     }
 
     /// プレビュー時の state（offset, zoomScale, rotationAngle, scaleX/Y）を
-    /// すべて反映した UIImage を返す
     private func exportImage() -> UIImage? {
-        guard let raw0 = silhouetteImage else { return nil }
+        guard let src = silhouetteImage?.normalized() else { return nil }
         
-        // 元画像のピクセルサイズ
-        let imgPxW = CGFloat(raw0.cgImage?.width  ?? Int(raw0.size.width  * raw0.scale))
-        let imgPxH = CGFloat(raw0.cgImage?.height ?? Int(raw0.size.height * raw0.scale))
-        
-        // 出力キャンバス（px）
         let outW = CGFloat(targetWidthPx)
         let outH = CGFloat(targetHeightPx)
         
-        // プレビューのフレーム実寸（pt）→ これを基準に pt→px 換算する
-        guard previewFramePt.width  > 0,
-              previewFramePt.height > 0 else { return nil }
+        // フレーム実寸（pt）を取得。ダメなら式で再計算してフォールバック
+        var framePt = previewFramePt
+        if framePt.width < 10 || framePt.height < 10 || framePt == .init(width: 100, height: 100) {
+            framePt = recalcFramePt(container: previewContainerPt)
+        }
+        guard framePt.width > 0, framePt.height > 0 else { return nil }
         
-        let kx = outW / previewFramePt.width   // pt→px 係数（X）
-        let ky = outH / previewFramePt.height  // pt→px 係数（Y）
+        // pt→px 係数（X/Y 別）
+        let kx = outW / framePt.width
+        let ky = outH / framePt.height
         
-        // ドラッグ量を px に変換（※UIScreen.main.scale は使わない）
+        // 画像サイズ（px）
+        let imgPxW = src.size.width  * src.scale
+        let imgPxH = src.size.height * src.scale
+        
+        // プレビューと同じ aspectFit（px基準にして OK）
+        let fitScalePx = min(outW / imgPxW, outH / imgPxH)
+        let totalScaleX = fitScalePx * zoomScale
+        let totalScaleY = fitScalePx * zoomScale
+        
+        // ドラッグ量：pt → px
         let offsetXPx = dragOffset.width  * kx
         let offsetYPx = dragOffset.height * ky
         
-        // 画像をフレームに aspectFit させるベース倍率（px基準）
-        let base = min(outW / imgPxW, outH / imgPxH)
-        let totalScale = base * zoomScale
-        
-        // 透明背景でレンダリング
         let fmt = UIGraphicsImageRendererFormat()
         fmt.opaque = false
         fmt.scale  = 1
-        
         let renderer = UIGraphicsImageRenderer(size: CGSize(width: outW, height: outH), format: fmt)
         
         return renderer.image { ctx in
             let c = ctx.cgContext
-            
-            // キャンバス中心へ → パン → ズーム（＋回転・反転が必要ならここで）
-            c.translateBy(x: outW/2 + offsetXPx, y: outH/2 + offsetYPx)
-            c.scaleBy(x: totalScale, y: totalScale)
-            
-            // 画像中心を原点へ
+            c.translateBy(x: outW/2, y: outH/2)
+            c.translateBy(x: offsetXPx, y: offsetYPx)
+            c.scaleBy(x: totalScaleX, y: totalScaleY)
             c.translateBy(x: -imgPxW/2, y: -imgPxH/2)
-            
-            // 描画（pxサイズで）
-            if let cg = raw0.cgImage {
-                c.draw(cg, in: CGRect(x: 0, y: 0, width: imgPxW, height: imgPxH))
-            } else {
-                raw0.draw(in: CGRect(x: 0, y: 0, width: imgPxW, height: imgPxH))
-            }
+            src.draw(in: CGRect(x: 0, y: 0, width: imgPxW, height: imgPxH))
         }
     }
 
