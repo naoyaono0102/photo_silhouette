@@ -44,14 +44,27 @@ struct PhotoEditorView: View {
     @State private var editingWidthPx: Double = 300
     @State private var editingHeightPx: Double = 300
 
+    // リセット時に使う
+    @State private var originalWidthPx: Double = 300
+    @State private var originalHeightPx: Double = 300
+
     ///  縦横比固定モードを切り替え
     @State private var lockAspect: Bool = false
-
     @State private var didInitialize = false
 
     // どの TextField がフォーカス中かを管理
     private enum Field { case width, height }
     @FocusState private var focusedField: Field?
+
+    private let minPx: Double = 50
+    private let maxPx: Double = 8000
+
+    @State private var lastEditedField: Field? = nil
+
+    @State private var widthText = ""
+    @State private var heightText = ""
+    @State private var lastValidWidthText = ""
+    @State private var lastValidHeightText = ""
 
     // MARK: - Core Image
 
@@ -91,6 +104,7 @@ struct PhotoEditorView: View {
             VStack(spacing: 0) {
                 // 0. サイズパネル
                 sizePanel
+                    .padding(.bottom, 4)
 
                 // 1.画像プレビューエリア
                 previewSection
@@ -110,11 +124,6 @@ struct PhotoEditorView: View {
             // 保存オーバーレイ
             overlayViews
         }
-        // 画面外タップでキーボードを閉じる
-        .contentShape(Rectangle()) // ZStack 全体をタップ対象に
-        .onTapGesture {
-            UIApplication.shared.endEditing()
-        }
         // キーボード上部にツールバーを追加
         .toolbar {
             ToolbarItemGroup(placement: .keyboard) {
@@ -124,14 +133,20 @@ struct PhotoEditorView: View {
                 }
             }
         }
-        // キーボードを閉じたら縦横サイズを反映
         .onChange(of: focusedField) { new in
-            // フォーカスがなくなった（＝完了ボタン or 画面外タップ）とき
-            if new == nil {
-                targetWidthPx = editingWidthPx
-                targetHeightPx = editingHeightPx
+            if let f = new { lastEditedField = f } // どちらを編集していたか記録（任意）
+            if new == nil { // フォーカスが外れた＝確定
+                applyEditingSizeFromText() // ← ここで幅/高さを反映＆クランプ
             }
         }
+        // キーボードを閉じたら縦横サイズを反映
+//        .onChange(of: focusedField) { new in
+//            // フォーカスがなくなった（＝完了ボタン or 画面外タップ）とき
+//            if new == nil {
+//                targetWidthPx = editingWidthPx
+//                targetHeightPx = editingHeightPx
+//            }
+//        }
         .ignoresSafeArea(.keyboard, edges: .bottom) // コンテンツの上にキーボードをかぶせる
         .navigationBarSetting(title: "", isVisible: true)
         .navigationBarIconSetting(name: "arrow.clockwise",
@@ -162,8 +177,33 @@ struct PhotoEditorView: View {
 
             // 広告読み込み
             Task { await adViewModel.loadAd() }
+
             didInitialize = true
         }
+    }
+
+    private func applyEditingSizeFromText() {
+        // 空なら下限に
+        var w = Double(widthText) ?? minPx
+        var h = Double(heightText) ?? minPx
+
+        // 上下限クランプ
+        w = min(max(w, minPx), maxPx)
+        h = min(max(h, minPx), maxPx)
+
+        // Stateを同期
+        editingWidthPx = w
+        editingHeightPx = h
+        targetWidthPx = w
+        targetHeightPx = h
+
+        // 表示文字列も整える（前ゼロ等を排除）
+        let wStr = String(Int(w.rounded()))
+        let hStr = String(Int(h.rounded()))
+        widthText = wStr
+        heightText = hStr
+        lastValidWidthText = wStr
+        lastValidHeightText = hStr
     }
 
     // MARK: - 保存処理
@@ -177,15 +217,45 @@ struct PhotoEditorView: View {
         isProcessing = true
     }
 
+    // 追加（PhotoEditorView 内）: カンマ無しの数値フォーマッタ
+    private static let pxFormatter: NumberFormatter = {
+        let f = NumberFormatter()
+        f.numberStyle = .decimal
+        f.maximumFractionDigits = 0
+        f.usesGroupingSeparator = false // ← カンマ無し
+        return f
+    }()
+
     // MARK: - 画像の初期サイズをセット
 
     /// UIImage の pixel サイズを State にセットする
     private func initSizeFromImage(_ img: UIImage) {
         if let cg = img.cgImage {
-            targetWidthPx = Double(cg.width)
-            targetHeightPx = Double(cg.height)
-            editingWidthPx = targetWidthPx
-            editingHeightPx = targetHeightPx
+//            targetWidthPx = Double(cg.width)
+//            targetHeightPx = Double(cg.height)
+//            editingWidthPx = targetWidthPx
+//            editingHeightPx = targetHeightPx
+
+            let w = Double(cg.width)
+            let h = Double(cg.height)
+
+            // 元解像度を記憶：resetで使用
+            originalWidthPx = w
+            originalHeightPx = h
+
+            // 数値 State を更新
+            targetWidthPx = w
+            targetHeightPx = h
+            editingWidthPx = w
+            editingHeightPx = h
+
+            // ← 追加：TextField 表示用の文字列も同期
+            let wStr = String(Int(w.rounded()))
+            let hStr = String(Int(h.rounded()))
+            widthText = wStr
+            heightText = hStr
+            lastValidWidthText = wStr
+            lastValidHeightText = hStr
         }
     }
 
@@ -195,17 +265,49 @@ struct PhotoEditorView: View {
         HStack(spacing: 16) {
             VStack {
                 Text("幅 (px)")
-                TextField("", value: $editingWidthPx, format: .number)
+                TextField("", text: $widthText)
                     .focused($focusedField, equals: .width)
                     .keyboardType(.numberPad)
                     .textFieldStyle(.roundedBorder)
+                    .onChange(of: widthText) { s in
+                        let sanitized = sanitizeDigits(s)
+                        if sanitized != s {
+                            widthText = sanitized
+                            return
+                        }
+                        if sanitized.isEmpty {
+                            // 入力中の空は許可。確定時に最低値で補正
+                            return
+                        }
+                        if let v = Double(sanitized), v <= maxPx {
+                            lastValidWidthText = sanitized
+                            editingWidthPx = v // プレビューは確定時に反映なので編集中は保持だけ
+                        } else {
+                            // 上限超過：直前の有効文字列に差し戻し
+                            widthText = lastValidWidthText
+                        }
+                    }
             }
             VStack {
                 Text("高さ (px)")
-                TextField("", value: $editingHeightPx, format: .number)
+                TextField("", text: $heightText)
                     .focused($focusedField, equals: .height)
                     .keyboardType(.numberPad)
                     .textFieldStyle(.roundedBorder)
+                    .onChange(of: heightText) { s in
+                        let sanitized = sanitizeDigits(s)
+                        if sanitized != s {
+                            heightText = sanitized
+                            return
+                        }
+                        if sanitized.isEmpty { return }
+                        if let v = Double(sanitized), v <= maxPx {
+                            lastValidHeightText = sanitized
+                            editingHeightPx = v
+                        } else {
+                            heightText = lastValidHeightText
+                        }
+                    }
             }
         }
         .padding(.horizontal, 16)
@@ -279,6 +381,12 @@ struct PhotoEditorView: View {
                     Spacer()
                 }
                 .frame(width: maxW, height: maxH)
+            }
+            // previewSection のレイアウトの末尾あたりに
+            .contentShape(Rectangle())
+            .onTapGesture {
+                // プレビュー内のどこかをタップしたらだけ、キーボードを閉じる
+                if focusedField != nil { focusedField = nil }
             }
             // ★ ここ（外側）で「プレビューコンテナ実寸」を安定して取得
             .background(
@@ -429,18 +537,38 @@ struct PhotoEditorView: View {
     }
 
     private func reset() {
-        // ① 画像自体は元のシルエットに戻す
+        // ① シルエット本体を初期化
         if let base = baseSilhouetteImage {
             silhouetteImage = base
         }
-        // ② ズーム・オフセット状態をリセット
+
+        // ② ズーム・位置・回転などを初期化
         zoomScale = 1.0
         lastZoomScale = 1.0
         dragOffset = .zero
         lastDragOffset = .zero
-        // （必要なら回転・反転もリセット）
         rotationAngle = .zero
         scaleX = 1; scaleY = 1
+
+        // ③ 幅/高さを「元解像度」に戻す（上限/下限でクランプ）
+        var w = originalWidthPx
+        var h = originalHeightPx
+        w = min(max(w, minPx), maxPx)
+        h = min(max(h, minPx), maxPx)
+
+        // 数値State反映
+        targetWidthPx = w
+        targetHeightPx = h
+        editingWidthPx = w
+        editingHeightPx = h
+
+        // 表示文字列も同期（TextFieldが厳密制御なのでここはクランプ値を入れる）
+        let wStr = String(Int(w.rounded()))
+        let hStr = String(Int(h.rounded()))
+        widthText = wStr
+        heightText = hStr
+        lastValidWidthText = wStr
+        lastValidHeightText = hStr
     }
 
     // MARK: - Image Transforms
@@ -751,6 +879,15 @@ struct PhotoEditorView: View {
             c.translateBy(x: -imgPxW/2, y: -imgPxH/2)
             src.draw(in: CGRect(x: 0, y: 0, width: imgPxW, height: imgPxH))
         }
+    }
+
+    // 数字だけにして先頭ゼロを整理（"" は許可）
+    private func sanitizeDigits(_ s: String) -> String {
+        let digits = s.filter { $0.isNumber }
+        if digits.isEmpty { return "" } // 入力中の空文字は許容
+        // 先頭の連続する0は落とす。ただし全部0なら"0"
+        let trimmed = digits.drop(while: { $0 == "0" })
+        return trimmed.isEmpty ? "0" : String(trimmed)
     }
 }
 
