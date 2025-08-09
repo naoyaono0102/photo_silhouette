@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		16B8BEA42E46CC6700CC133A /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 16B8BEA32E46CC6700CC133A /* PrivacyInfo.xcprivacy */; };
 		16BC57442E42D88E000C1F83 /* GoogleMobileAds in Frameworks */ = {isa = PBXBuildFile; productRef = 16BC57432E42D88E000C1F83 /* GoogleMobileAds */; };
 		16BC574B2E42D897000C1F83 /* Preview Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 16BC57452E42D897000C1F83 /* Preview Assets.xcassets */; };
 		16BC574C2E42D897000C1F83 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 16BC57472E42D897000C1F83 /* Assets.xcassets */; };
@@ -44,6 +45,7 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		16B8BEA32E46CC6700CC133A /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		16BC572B2E42D83B000C1F83 /* photo_silhouette.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = photo_silhouette.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		16BC57452E42D897000C1F83 /* Preview Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = "Preview Assets.xcassets"; sourceTree = "<group>"; };
 		16BC57472E42D897000C1F83 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
@@ -99,6 +101,7 @@
 		16BC57222E42D83B000C1F83 = {
 			isa = PBXGroup;
 			children = (
+				16B8BEA32E46CC6700CC133A /* PrivacyInfo.xcprivacy */,
 				16BC57A22E42D916000C1F83 /* InfoPlist.strings */,
 				16BC579F2E42D904000C1F83 /* Localizable.strings */,
 				16BC574A2E42D897000C1F83 /* photo_silhouette */,
@@ -390,6 +393,7 @@
 				16BC574B2E42D897000C1F83 /* Preview Assets.xcassets in Resources */,
 				16BC57A42E42D916000C1F83 /* InfoPlist.strings in Resources */,
 				16BC57A12E42D904000C1F83 /* Localizable.strings in Resources */,
+				16B8BEA42E46CC6700CC133A /* PrivacyInfo.xcprivacy in Resources */,
 				16BC574C2E42D897000C1F83 /* Assets.xcassets in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -589,8 +593,8 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "photo-silhouette-Info.plist";
-				INFOPLIST_KEY_NSCameraUsageDescription = "This app requires access to your camera to allow taking photos for editing.";
-				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "This app requires access to your Photo Library to allow selecting and editing photos.";
+				INFOPLIST_KEY_NSCameraUsageDescription = "This app requires access to your camera to take portrait photos and create silhouettes.";
+				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "This app requires access to your photo library to select photos for silhouette conversion.";
 				INFOPLIST_KEY_NSUserTrackingUsageDescription = "Your data will be used to deliver personalized ads based on your interests rather than random and irrelevant ads.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
@@ -625,8 +629,8 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "photo-silhouette-Info.plist";
-				INFOPLIST_KEY_NSCameraUsageDescription = "This app requires access to your camera to allow taking photos for editing.";
-				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "This app requires access to your Photo Library to allow selecting and editing photos.";
+				INFOPLIST_KEY_NSCameraUsageDescription = "This app requires access to your camera to take portrait photos and create silhouettes.";
+				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "This app requires access to your photo library to select photos for silhouette conversion.";
 				INFOPLIST_KEY_NSUserTrackingUsageDescription = "Your data will be used to deliver personalized ads based on your interests rather than random and irrelevant ads.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;

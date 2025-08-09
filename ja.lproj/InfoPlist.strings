@@ -5,7 +5,7 @@
   Created by 尾野順哉 on 2025/08/06.
   
 */
-CFBundleDisplayName = "シルエット写真";
+CFBundleDisplayName = "人物シルエット";
 NSUserTrackingUsageDescription = "許可することで、興味・関心がない広告が配信されにくくなります。";
-NSPhotoLibraryUsageDescription = "このアプリは、写真の選択や編集を行うために写真ライブラリへのアクセスが必要です。";
-NSCameraUsageDescription = "このアプリは、写真を撮影して編集するためにカメラへのアクセスが必要です。";
+NSPhotoLibraryUsageDescription = "このアプリはシルエット変換のために写真を選択する目的で写真ライブラリへのアクセスが必要です";
+NSCameraUsageDescription = "このアプリはシルエット作成のために人物写真を撮影する目的でカメラへのアクセスが必要です。";
