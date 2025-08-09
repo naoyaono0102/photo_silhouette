@@ -124,6 +124,8 @@ struct PhotoEditorView: View {
             // 保存オーバーレイ
             overlayViews
         }
+        // 初回キーボード表示の遅延対策
+        .overlay(KeyboardWarmer().allowsHitTesting(false))
         // キーボード上部にツールバーを追加
         .toolbar {
             ToolbarItemGroup(placement: .keyboard) {
@@ -913,4 +915,31 @@ extension UIImage {
         UIGraphicsEndImageContext()
         return img
     }
+}
+
+struct KeyboardWarmer: UIViewRepresentable {
+    private static var warmed = false
+    
+    func makeUIView(context: Context) -> UIView {
+        let container = UIView(frame: .zero)
+        
+        guard !Self.warmed else { return container }
+        
+        // 隠しTextFieldで一瞬だけキーボードを開いて閉じる
+        let tf = UITextField(frame: .zero)
+        tf.isHidden = true
+        container.addSubview(tf)
+        
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+            tf.becomeFirstResponder()
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+                tf.resignFirstResponder()
+                tf.removeFromSuperview()
+                Self.warmed = true
+            }
+        }
+        return container
+    }
+    
+    func updateUIView(_ uiView: UIView, context: Context) {}
 }
