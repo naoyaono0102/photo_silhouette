@@ -204,3 +204,6 @@
 "FLIP_HORIZONTAL" = "左右反転";
 "FLIP_VERTICAL" = "上下反転";
 "RIGHT_ROTATION" = "右回転";
+
+"LABEL_WIDTH" = "横";
+"LABEL_HEIGHT" = "縦";

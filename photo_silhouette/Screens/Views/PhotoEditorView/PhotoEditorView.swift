@@ -285,7 +285,7 @@ struct PhotoEditorView: View {
     private var sizePanel: some View {
         HStack(spacing: 16) {
             HStack {
-                Text("横")
+                Text("LABEL_WIDTH")
                 TextField("", text: $widthText)
                     .focused($focusedField, equals: .width)
                     .keyboardType(.numberPad)
@@ -310,7 +310,7 @@ struct PhotoEditorView: View {
                     }
             }
             HStack {
-                Text("縦")
+                Text("LABEL_HEIGHT")
                 TextField("", text: $heightText)
                     .focused($focusedField, equals: .height)
                     .keyboardType(.numberPad)
@@ -833,21 +833,60 @@ struct PhotoEditorView: View {
     }
 
     private func shareImage() {
+        // ① まずフラグON（UIに“処理中”を描かせる）
         isProcessing = true
-        guard let img = exportImage(),
-              let data = img.pngData()
-        else {
-            isProcessing = false
-            return
+
+        // ② 1フレームあとに処理開始（オーバーレイが確実に出る）
+        DispatchQueue.main.async {
+            // ③ 重い処理はバックグラウンドへ
+            DispatchQueue.global(qos: .userInitiated).async {
+                // ※ UIGraphicsImageRenderer を使っている exportImage() は
+                //   できればメインでやるのが無難ですが、実運用では BG でも動くことが多いです。
+                //   もし端末で問題が出る場合は exportImage() 部分だけ main.async で実行してください。
+                guard let img = exportImage(),
+                      let data = img.pngData() else {
+                    DispatchQueue.main.async { isProcessing = false }
+                    return
+                }
+
+                let url = FileManager.default.temporaryDirectory
+                    .appendingPathComponent("silhouette_\(UUID()).png")
+
+                do {
+                    try data.write(to: url)
+                } catch {
+                    DispatchQueue.main.async { isProcessing = false }
+                    return
+                }
+
+                // ④ UI更新はメインに戻す
+                DispatchQueue.main.async {
+                    shareItems = [url]
+                    showingShareSheet = true
+                    isProcessing = false
+                }
+            }
         }
-        let url = FileManager.default
-            .temporaryDirectory
-            .appendingPathComponent("silhouette_\(UUID()).png")
-        try? data.write(to: url)
-        shareItems = [url]
-        showingShareSheet = true
-        isProcessing = false
     }
+
+//    private func shareImage() {
+//        isProcessing = true
+//
+//        guard let img = exportImage(),
+//              let data = img.pngData()
+//        else {
+//            isProcessing = false
+//            return
+//        }
+//
+//        let url = FileManager.default
+//            .temporaryDirectory
+//            .appendingPathComponent("silhouette_\(UUID()).png")
+//        try? data.write(to: url)
+//        shareItems = [url]
+//        showingShareSheet = true
+//        isProcessing = false
+//    }
 
     /// 現在のコンテナ実寸とユーザー指定 px から、
     /// プレビューで実際に使うフレーム実寸(pt)を再計算する

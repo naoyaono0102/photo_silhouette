@@ -257,3 +257,6 @@
 "FLIP_HORIZONTAL" = "Flip Horizontal";
 "FLIP_VERTICAL" = "Flip Vertical";
 "RIGHT_ROTATION" = "Rotate Right";
+
+"LABEL_WIDTH" = "Width";
+"LABEL_HEIGHT" = "Height";
