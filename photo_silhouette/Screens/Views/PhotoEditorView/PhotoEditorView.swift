@@ -66,6 +66,9 @@ struct PhotoEditorView: View {
     @State private var lastValidWidthText = ""
     @State private var lastValidHeightText = ""
 
+    private enum PreviewMode: String, CaseIterable { case before, after }
+    @State private var previewMode: PreviewMode = .after
+
     // MARK: - Core Image
 
     private let ciContext = CIContext()
@@ -102,6 +105,9 @@ struct PhotoEditorView: View {
 
             // メインコンテンツ
             VStack(spacing: 0) {
+                // 0. モード切替（After / Before）
+//                modeSwitcher
+
                 // 0. サイズパネル
                 sizePanel
                     .padding(.bottom, 4)
@@ -114,11 +120,13 @@ struct PhotoEditorView: View {
                 // 2. コントロールパネル
                 controlPanel
                     .padding(.horizontal, 16)
+                    .disabled(previewMode == .before)
 
                 // 3. 保存、共有ボタン
                 actionButtons
                     .padding(.bottom, 5)
                     .padding(.horizontal, 16)
+                    .disabled(previewMode == .before)
             }
 
             // 保存オーバーレイ
@@ -141,18 +149,16 @@ struct PhotoEditorView: View {
                 applyEditingSizeFromText() // ← ここで幅/高さを反映＆クランプ
             }
         }
-        // キーボードを閉じたら縦横サイズを反映
-//        .onChange(of: focusedField) { new in
-//            // フォーカスがなくなった（＝完了ボタン or 画面外タップ）とき
-//            if new == nil {
-//                targetWidthPx = editingWidthPx
-//                targetHeightPx = editingHeightPx
-//            }
-//        }
         .ignoresSafeArea(.keyboard, edges: .bottom) // コンテンツの上にキーボードをかぶせる
         .navigationBarSetting(title: "", isVisible: true)
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .principal) {
+                modeSwitcher
+            }
+        }
         .navigationBarIconSetting(name: "arrow.clockwise",
-                                  isEnabled: true,
+                                  isEnabled: previewMode == .after,
                                   iconPosition: .trailing,
                                   action: reset)
         .animation(.easeInOut, value: showSavedToast)
@@ -261,12 +267,25 @@ struct PhotoEditorView: View {
         }
     }
 
+    // MARK: - モードスイッチ
+
+    private var modeSwitcher: some View {
+        Picker("", selection: $previewMode) {
+            Text("Before").tag(PreviewMode.before)
+            Text("After").tag(PreviewMode.after)
+        }
+        .pickerStyle(.segmented)
+        .padding(.horizontal, 16)
+        .padding(.top, 8)
+//        .fixedSize() // 追加
+    }
+
     // MARK: - サイズ調整
 
     private var sizePanel: some View {
         HStack(spacing: 16) {
-            VStack {
-                Text("幅 (px)")
+            HStack {
+                Text("横")
                 TextField("", text: $widthText)
                     .focused($focusedField, equals: .width)
                     .keyboardType(.numberPad)
@@ -290,8 +309,8 @@ struct PhotoEditorView: View {
                         }
                     }
             }
-            VStack {
-                Text("高さ (px)")
+            HStack {
+                Text("縦")
                 TextField("", text: $heightText)
                     .focused($focusedField, equals: .height)
                     .keyboardType(.numberPad)
@@ -348,13 +367,25 @@ struct PhotoEditorView: View {
                     Spacer()
                     // ← この ZStack が「ユーザーが指定したフレーム」(displayW x displayH)
                     ZStack {
-                        CheckerboardView()
-                        if let img = silhouetteImage ?? originalImage {
+                        if previewMode == .after {
+                            CheckerboardView()
+                        }
+
+                        let imgToShow: UIImage? = {
+                            switch previewMode {
+                            case .after:
+                                return silhouetteImage ?? originalImage
+                            case .before:
+                                return originalImage
+                            }
+                        }()
+
+                        if let img = imgToShow {
                             Image(uiImage: img)
                                 .resizable()
                                 .aspectRatio(contentMode: .fit) // フレーム内で元比を維持
-                                .scaleEffect(zoomScale) // 画像に拡大縮小
-                                .offset(dragOffset) // 画像にパン
+                                .scaleEffect(previewMode == .after ? zoomScale : 1) // 画像に拡大縮小
+                                .offset(previewMode == .after ? dragOffset : .zero) // 画像にパン
                         }
                     }
                     .frame(width: displayW, height: displayH) // ★ フレームの実サイズをここで固定
@@ -386,6 +417,7 @@ struct PhotoEditorView: View {
             }
             // previewSection のレイアウトの末尾あたりに
             .contentShape(Rectangle())
+            .allowsHitTesting(previewMode == .after) // afterの場合だけgestureを許可
             .onTapGesture {
                 // プレビュー内のどこかをタップしたらだけ、キーボードを閉じる
                 if focusedField != nil { focusedField = nil }
@@ -492,7 +524,7 @@ struct PhotoEditorView: View {
             Button(action: saveImage) {
                 HStack {
                     Image(systemName: "square.and.arrow.down")
-                        .foregroundColor(.white)
+//                        .foregroundColor(.white)
                     Text("BUTTON_SAVE")
                 }
                 .frame(maxWidth: .infinity)
@@ -504,7 +536,7 @@ struct PhotoEditorView: View {
             Button(action: shareImage) {
                 HStack {
                     Image(systemName: "square.and.arrow.up")
-                        .foregroundColor(.white)
+//                        .foregroundColor(.white)
                     Text("BUTTON_SHARE")
                 }
                 .frame(maxWidth: .infinity)
@@ -919,17 +951,17 @@ extension UIImage {
 
 struct KeyboardWarmer: UIViewRepresentable {
     private static var warmed = false
-    
+
     func makeUIView(context: Context) -> UIView {
         let container = UIView(frame: .zero)
-        
+
         guard !Self.warmed else { return container }
-        
+
         // 隠しTextFieldで一瞬だけキーボードを開いて閉じる
         let tf = UITextField(frame: .zero)
         tf.isHidden = true
         container.addSubview(tf)
-        
+
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
             tf.becomeFirstResponder()
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
@@ -940,6 +972,6 @@ struct KeyboardWarmer: UIViewRepresentable {
         }
         return container
     }
-    
+
     func updateUIView(_ uiView: UIView, context: Context) {}
 }
