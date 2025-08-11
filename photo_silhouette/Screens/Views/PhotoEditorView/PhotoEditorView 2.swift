@@ -3,6 +3,7 @@
 //import CoreImage.CIFilterBuiltins
 //import Photos
 //import SwiftUI
+//import UIKit
 //import Vision
 //
 //struct PhotoEditorView: View {
@@ -11,11 +12,14 @@
 //    private let capturedUIImage: UIImage? // カメラ撮影後に渡される場合
 //    
 //    // MARK: - State
+//    
 //    @State private var originalImage: UIImage? = nil
 //    @State private var silhouetteImage: UIImage? = nil
 //    @State private var baseSilhouetteImage: UIImage? = nil
 //    @State private var isProcessing = false // 処理中フラグ
 //    
+//    @State private var previewContainerPt: CGSize = .zero // 追加：プレビュー領域そのものの実寸(pt)
+//    @State private var previewFramePt: CGSize = .zero // 既存：フレーム実寸(pt)
 //    
 //    // 共有／保存
 //    @State private var showingShareSheet = false
@@ -30,6 +34,40 @@
 //    
 //    // 全画面広告
 //    @StateObject private var adViewModel = InterstitialViewModel()
+//    
+//    /// 単位は“px”
+//    // 既存の targetWidthPx, targetHeightPx は「プレビューに反映される値」として使う
+//    @State private var targetWidthPx: Double = 300
+//    @State private var targetHeightPx: Double = 300
+//    
+//    // 新規：テキストフィールドにバインドする“編集中の値”
+//    @State private var editingWidthPx: Double = 300
+//    @State private var editingHeightPx: Double = 300
+//    
+//    // リセット時に使う
+//    @State private var originalWidthPx: Double = 300
+//    @State private var originalHeightPx: Double = 300
+//    
+//    ///  縦横比固定モードを切り替え
+//    @State private var lockAspect: Bool = false
+//    @State private var didInitialize = false
+//    
+//    // どの TextField がフォーカス中かを管理
+//    private enum Field { case width, height }
+//    @FocusState private var focusedField: Field?
+//    
+//    private let minPx: Double = 50
+//    private let maxPx: Double = 8000
+//    
+//    @State private var lastEditedField: Field? = nil
+//    
+//    @State private var widthText = ""
+//    @State private var heightText = ""
+//    @State private var lastValidWidthText = ""
+//    @State private var lastValidHeightText = ""
+//    
+//    private enum PreviewMode: String, CaseIterable { case before, after }
+//    @State private var previewMode: PreviewMode = .after
 //    
 //    // MARK: - Core Image
 //    
@@ -51,6 +89,12 @@
 //        self.capturedUIImage = capturedUIImage
 //    }
 //    
+//    @State private var zoomScale: CGFloat = 1.0
+//    @State private var lastZoomScale: CGFloat = 1.0
+//    
+//    @State private var dragOffset: CGSize = .zero
+//    @State private var lastDragOffset: CGSize = .zero
+//    
 //    // MARK: — Body
 //    
 //    var body: some View {
@@ -61,26 +105,60 @@
 //            
 //            // メインコンテンツ
 //            VStack(spacing: 0) {
+//                // 0. モード切替（After / Before）
+//                //                modeSwitcher
+//                
+//                // 0. サイズパネル
+//                sizePanel
+//                    .padding(.bottom, 4)
+//                
 //                // 1.画像プレビューエリア
 //                previewSection
-//                    .frame(maxWidth: .infinity)
+//                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+//                    .background(.gray)
 //                
 //                // 2. コントロールパネル
 //                controlPanel
 //                    .padding(.horizontal, 16)
+//                    .disabled(previewMode == .before)
 //                
 //                // 3. 保存、共有ボタン
 //                actionButtons
 //                    .padding(.bottom, 5)
 //                    .padding(.horizontal, 16)
+//                    .disabled(previewMode == .before)
 //            }
 //            
 //            // 保存オーバーレイ
 //            overlayViews
 //        }
+//        // 初回キーボード表示の遅延対策
+//        .overlay(KeyboardWarmer().allowsHitTesting(false))
+//        // キーボード上部にツールバーを追加
+//        .toolbar {
+//            ToolbarItemGroup(placement: .keyboard) {
+//                Spacer()
+//                Button("完了") {
+//                    focusedField = nil
+//                }
+//            }
+//        }
+//        .onChange(of: focusedField) { new in
+//            if let f = new { lastEditedField = f } // どちらを編集していたか記録（任意）
+//            if new == nil { // フォーカスが外れた＝確定
+//                applyEditingSizeFromText() // ← ここで幅/高さを反映＆クランプ
+//            }
+//        }
+//        .ignoresSafeArea(.keyboard, edges: .bottom) // コンテンツの上にキーボードをかぶせる
 //        .navigationBarSetting(title: "", isVisible: true)
+//        .navigationBarTitleDisplayMode(.inline)
+//        .toolbar {
+//            ToolbarItem(placement: .principal) {
+//                modeSwitcher
+//            }
+//        }
 //        .navigationBarIconSetting(name: "arrow.clockwise",
-//                                  isEnabled: true,
+//                                  isEnabled: previewMode == .after,
 //                                  iconPosition: .trailing,
 //                                  action: reset)
 //        .animation(.easeInOut, value: showSavedToast)
@@ -91,8 +169,15 @@
 //            }
 //        }
 //        .onAppear {
+//            // 初期化完了済の場合はスキップ
+//            guard !didInitialize else { return }
+//            
+//            editingWidthPx = targetWidthPx
+//            editingHeightPx = targetHeightPx
+//            
 //            if let img = capturedUIImage {
 //                originalImage = img
+//                initSizeFromImage(img)
 //                processSilhouette(from: img)
 //            } else if let asst = asset {
 //                loadImage(from: asst)
@@ -100,7 +185,33 @@
 //            
 //            // 広告読み込み
 //            Task { await adViewModel.loadAd() }
+//            
+//            didInitialize = true
 //        }
+//    }
+//    
+//    private func applyEditingSizeFromText() {
+//        // 空なら下限に
+//        var w = Double(widthText) ?? minPx
+//        var h = Double(heightText) ?? minPx
+//        
+//        // 上下限クランプ
+//        w = min(max(w, minPx), maxPx)
+//        h = min(max(h, minPx), maxPx)
+//        
+//        // Stateを同期
+//        editingWidthPx = w
+//        editingHeightPx = h
+//        targetWidthPx = w
+//        targetHeightPx = h
+//        
+//        // 表示文字列も整える（前ゼロ等を排除）
+//        let wStr = String(Int(w.rounded()))
+//        let hStr = String(Int(h.rounded()))
+//        widthText = wStr
+//        heightText = hStr
+//        lastValidWidthText = wStr
+//        lastValidHeightText = hStr
 //    }
 //    
 //    // MARK: - 保存処理
@@ -114,96 +225,225 @@
 //        isProcessing = true
 //    }
 //    
-//    // MARK: - UI：プレビューセクション
+//    // 追加（PhotoEditorView 内）: カンマ無しの数値フォーマッタ
+//    private static let pxFormatter: NumberFormatter = {
+//        let f = NumberFormatter()
+//        f.numberStyle = .decimal
+//        f.maximumFractionDigits = 0
+//        f.usesGroupingSeparator = false // ← カンマ無し
+//        return f
+//    }()
 //    
-//    //    private var previewSection: some View {
-//    //        Group {
-//    //            if let sil = silhouetteImage {
-//    //                ZStack {
-//    //                    CheckerboardView()
-//    //                    Image(uiImage: sil)
-//    //                        .resizable()
-//    //                        .aspectRatio(sil.size, contentMode: .fit)
-//    //                        .frame(maxWidth: .infinity)
-//    //                }
-//    //            } else if let img = originalImage {
-//    //                Image(uiImage: img)
-//    //                    .resizable()
-//    //                    .aspectRatio(img.size, contentMode: .fit)
-//    //                    .frame(maxWidth: .infinity)
-//    //                    .opacity(0.3)
-//    //            } else {
-//    //                ProgressView()
-//    //            }
-//    //        }
-//    //        // 必要であれば .padding() を horizontal だけにするなど調整してください
-//    //    }
+//    // MARK: - 画像の初期サイズをセット
 //    
-//    //    private var previewSection: some View {
-//    //        Group {
-//    //            if let sil = silhouetteImage {
-//    //                // アスペクト比を保持しつつ、チェックボードとシルエットを同じフレームで重ねる
-//    //                GeometryReader { geo in
-//    //                    let aspect = sil.size.width / sil.size.height
-//    //                    let width = geo.size.width
-//    //                    let height = width / aspect
-//    //                    VStack(spacing: 0) {
-//    //                        Spacer()
-//    //                        ZStack {
-//    //                            CheckerboardView()
-//    //                            Image(uiImage: sil)
-//    //                                .resizable()
-//    //                                .scaledToFit()
-//    //                        }
-//    //                        .frame(width: width, height: height)
-//    //
-//    //                    }
-//    //                }
-//    //            } else if let img = originalImage {
-//    //                Image(uiImage: img)
-//    //                    .resizable()
-//    //                    .scaledToFit()
-//    //                    .opacity(0.3)
-//    //            } else {
-//    //                ProgressView()
-//    //            }
-//    //        }
-//    //    }
+//    /// UIImage の pixel サイズを State にセットする
+//    private func initSizeFromImage(_ img: UIImage) {
+//        if let cg = img.cgImage {
+//            //            targetWidthPx = Double(cg.width)
+//            //            targetHeightPx = Double(cg.height)
+//            //            editingWidthPx = targetWidthPx
+//            //            editingHeightPx = targetHeightPx
+//            
+//            let w = Double(cg.width)
+//            let h = Double(cg.height)
+//            
+//            // 元解像度を記憶：resetで使用
+//            originalWidthPx = w
+//            originalHeightPx = h
+//            
+//            // 数値 State を更新
+//            targetWidthPx = w
+//            targetHeightPx = h
+//            editingWidthPx = w
+//            editingHeightPx = h
+//            
+//            // ← 追加：TextField 表示用の文字列も同期
+//            let wStr = String(Int(w.rounded()))
+//            let hStr = String(Int(h.rounded()))
+//            widthText = wStr
+//            heightText = hStr
+//            lastValidWidthText = wStr
+//            lastValidHeightText = hStr
+//        }
+//    }
+//    
+//    // MARK: - モードスイッチ
+//    
+//    private var modeSwitcher: some View {
+//        Picker("", selection: $previewMode) {
+//            Text("Before").tag(PreviewMode.before)
+//            Text("After").tag(PreviewMode.after)
+//        }
+//        .pickerStyle(.segmented)
+//        .padding(.horizontal, 16)
+//        .padding(.top, 8)
+//        //        .fixedSize() // 追加
+//    }
+//    
+//    // MARK: - サイズ調整
+//    
+//    private var sizePanel: some View {
+//        HStack(spacing: 16) {
+//            HStack {
+//                Text("LABEL_WIDTH")
+//                TextField("", text: $widthText)
+//                    .focused($focusedField, equals: .width)
+//                    .keyboardType(.numberPad)
+//                    .textFieldStyle(.roundedBorder)
+//                    .onChange(of: widthText) { s in
+//                        let sanitized = sanitizeDigits(s)
+//                        if sanitized != s {
+//                            widthText = sanitized
+//                            return
+//                        }
+//                        if sanitized.isEmpty {
+//                            // 入力中の空は許可。確定時に最低値で補正
+//                            return
+//                        }
+//                        if let v = Double(sanitized), v <= maxPx {
+//                            lastValidWidthText = sanitized
+//                            editingWidthPx = v // プレビューは確定時に反映なので編集中は保持だけ
+//                        } else {
+//                            // 上限超過：直前の有効文字列に差し戻し
+//                            widthText = lastValidWidthText
+//                        }
+//                    }
+//            }
+//            HStack {
+//                Text("LABEL_HEIGHT")
+//                TextField("", text: $heightText)
+//                    .focused($focusedField, equals: .height)
+//                    .keyboardType(.numberPad)
+//                    .textFieldStyle(.roundedBorder)
+//                    .onChange(of: heightText) { s in
+//                        let sanitized = sanitizeDigits(s)
+//                        if sanitized != s {
+//                            heightText = sanitized
+//                            return
+//                        }
+//                        if sanitized.isEmpty { return }
+//                        if let v = Double(sanitized), v <= maxPx {
+//                            lastValidHeightText = sanitized
+//                            editingHeightPx = v
+//                        } else {
+//                            heightText = lastValidHeightText
+//                        }
+//                    }
+//            }
+//        }
+//        .padding(.horizontal, 16)
+//        .padding(.vertical, 8)
+//    }
 //    
 //    // MARK: — Preview Section
 //    
 //    private var previewSection: some View {
 //        GeometryReader { geo in
-//            let width = geo.size.width
+//            // 1) ユーザー指定 px → pt
+//            let scale = UIScreen.main.scale
+//            let desiredW = CGFloat(targetWidthPx)/scale
+//            let desiredH = CGFloat(targetHeightPx)/scale
 //            
-//            VStack(spacing: 0) {
-//                if let img = silhouetteImage ?? originalImage {
-//                    // 画像のアスペクト比を維持してサイズ計算
-//                    let aspect = img.size.width/img.size.height
-//                    let height = width/aspect
-//                    
+//            // 2) プレビューの表示領域（pt）
+//            let maxW = geo.size.width
+//            let maxH = geo.size.height
+//            
+//            // 3) フレーム比を保ったまま、画面にはみ出ない最大サイズを算出
+//            let frameRatio = desiredW/desiredH
+//            let screenRatio = maxW/maxH
+//            
+//            let displayW: CGFloat = frameRatio > screenRatio
+//            ? min(desiredW, maxW) // 横を合わせる
+//            : min(desiredH * frameRatio, maxW) // 縦基準で横を決める
+//            
+//            let displayH: CGFloat = frameRatio > screenRatio
+//            ? displayW/frameRatio // 横に合わせたので高さは比率から
+//            : min(desiredH, maxH) // 縦を合わせる
+//            
+//            ZStack {
+//                Color.gray // previewSection 全体の背景
+//                
+//                VStack {
+//                    Spacer()
+//                    // ← この ZStack が「ユーザーが指定したフレーム」(displayW x displayH)
 //                    ZStack {
-//                        // チェッカーボード背景
-//                        CheckerboardView()
-//                            .frame(width: width, height: height)
-//                        // 画像表示
-//                        Image(uiImage: img)
-//                            .resizable()
-//                            .aspectRatio(contentMode: .fit)
-//                            .frame(width: width, height: height)
-//                            .opacity(silhouetteImage == nil ? 0.3 : 1.0)
+//                        if previewMode == .after {
+//                            CheckerboardView()
+//                        }
+//                        
+//                        let imgToShow: UIImage? = {
+//                            switch previewMode {
+//                            case .after:
+//                                return silhouetteImage ?? originalImage
+//                            case .before:
+//                                return originalImage
+//                            }
+//                        }()
+//                        
+//                        if let img = imgToShow {
+//                            Image(uiImage: img)
+//                                .resizable()
+//                                .aspectRatio(contentMode: .fit) // フレーム内で元比を維持
+//                                .scaleEffect(previewMode == .after ? zoomScale : 1) // 画像に拡大縮小
+//                                .offset(previewMode == .after ? dragOffset : .zero) // 画像にパン
+//                        }
 //                    }
-//                    .clipped()
-//                    // 上寄せで配置
-//                    .frame(width: width, height: height, alignment: .top)
-//                } else {
-//                    ProgressView()
-//                        .frame(width: width)
+//                    .frame(width: displayW, height: displayH) // ★ フレームの実サイズをここで固定
+//                    .clipped() // ★ 枠からはみ出した部分は描かない
+//                    .contentShape(Rectangle()) // 透明部分もタップ可
+//                    .gesture(
+//                        DragGesture(minimumDistance: 0)
+//                            .onChanged { v in
+//                                dragOffset = CGSize(
+//                                    width: lastDragOffset.width + v.translation.width,
+//                                    height: lastDragOffset.height + v.translation.height
+//                                )
+//                            }
+//                            .onEnded { _ in lastDragOffset = dragOffset }
+//                    )
+//                    .simultaneousGesture(
+//                        MagnificationGesture()
+//                            .onChanged { v in zoomScale = lastZoomScale * v }
+//                            .onEnded { _ in lastZoomScale = zoomScale }
+//                    )
+//                    // フレーム実寸（pt）を保存（エクスポート時の pt→px 換算で使用）
+//                    .onAppear { previewFramePt = CGSize(width: displayW, height: displayH) }
+//                    .onChange(of: displayW) { _ in previewFramePt = CGSize(width: displayW, height: displayH) }
+//                    .onChange(of: displayH) { _ in previewFramePt = CGSize(width: displayW, height: displayH) }
+//                    
+//                    Spacer()
 //                }
-//                Spacer()
+//                .frame(width: maxW, height: maxH)
+//            }
+//            // previewSection のレイアウトの末尾あたりに
+//            .contentShape(Rectangle())
+//            .allowsHitTesting(previewMode == .after) // afterの場合だけgestureを許可
+//            .onTapGesture {
+//                // プレビュー内のどこかをタップしたらだけ、キーボードを閉じる
+//                if focusedField != nil { focusedField = nil }
+//            }
+//            // ★ ここ（外側）で「プレビューコンテナ実寸」を安定して取得
+//            .background(
+//                GeometryReader { p in
+//                    Color.clear
+//                        .onAppear {
+//                            previewContainerPt = p.size
+//                            previewFramePt = recalcFramePt(container: p.size)
+//                        }
+//                        .onChange(of: p.size) { newSize in
+//                            previewContainerPt = newSize
+//                            previewFramePt = recalcFramePt(container: newSize)
+//                        }
+//                }
+//            )
+//            // 入力が変わったらフレーム実寸を再計算
+//            .onChange(of: targetWidthPx) { _ in
+//                previewFramePt = recalcFramePt(container: previewContainerPt)
+//            }
+//            .onChange(of: targetHeightPx) { _ in
+//                previewFramePt = recalcFramePt(container: previewContainerPt)
 //            }
 //        }
-//        .frame(maxWidth: .infinity)
 //    }
 //    
 //    // MARK: — Control Panel Section：編集メニュー
@@ -284,7 +524,7 @@
 //            Button(action: saveImage) {
 //                HStack {
 //                    Image(systemName: "square.and.arrow.down")
-//                        .foregroundColor(.white)
+//                    //                        .foregroundColor(.white)
 //                    Text("BUTTON_SAVE")
 //                }
 //                .frame(maxWidth: .infinity)
@@ -296,7 +536,7 @@
 //            Button(action: shareImage) {
 //                HStack {
 //                    Image(systemName: "square.and.arrow.up")
-//                        .foregroundColor(.white)
+//                    //                        .foregroundColor(.white)
 //                    Text("BUTTON_SHARE")
 //                }
 //                .frame(maxWidth: .infinity)
@@ -308,65 +548,65 @@
 //        .padding(.bottom, 10)
 //    }
 //    
-//    // MARK: — Transformation Actions
-//    
-//    //    private func rotateLeft() {
-//    //        guard let img = silhouetteImage else { return }
-//    //        silhouetteImage = transformed(image: img, rotation: -.pi/2)
-//    //    }
-//    //
-//    //    private func rotateRight() {
-//    //        guard let img = silhouetteImage else { return }
-//    //        silhouetteImage = transformed(image: img, rotation: .pi/2)
-//    //    }
-//    //
-//    //    private func flipHorizontal() {
-//    //        guard let img = silhouetteImage else { return }
-//    //        silhouetteImage = flipped(image: img, horizontal: true)
-//    //    }
-//    //
-//    //    private func flipVertical() {
-//    //        guard let img = silhouetteImage else { return }
-//    //        silhouetteImage = flipped(image: img, horizontal: false)
-//    //    }
-//    //
-//    //    private func transformed(image: UIImage, rotation: CGFloat) -> UIImage? {
-//    //        let size = CGSize(width: image.size.height, height: image.size.width)
-//    //        let renderer = UIGraphicsImageRenderer(size: size)
-//    //        return renderer.image { ctx in
-//    //            ctx.cgContext.translateBy(x: size.width/2, y: size.height/2)
-//    //            ctx.cgContext.rotate(by: rotation)
-//    //            image.draw(in: CGRect(x: -image.size.width/2,
-//    //                                  y: -image.size.height/2,
-//    //                                  width: image.size.width,
-//    //                                  height: image.size.height))
-//    //        }
-//    //    }
-//    
 //    // MARK: - Transform Actions
+//    
 //    private func rotateLeft() {
 //        guard let img = silhouetteImage else { return }
 //        silhouetteImage = transformed(image: img, rotation: -.pi/2)
 //    }
+//    
 //    private func rotateRight() {
 //        guard let img = silhouetteImage else { return }
 //        silhouetteImage = transformed(image: img, rotation: .pi/2)
 //    }
+//    
 //    private func flipHorizontal() {
 //        guard let img = silhouetteImage else { return }
 //        silhouetteImage = flipped(image: img, horizontal: true)
 //    }
+//    
 //    private func flipVertical() {
 //        guard let img = silhouetteImage else { return }
 //        silhouetteImage = flipped(image: img, horizontal: false)
 //    }
+//    
 //    private func reset() {
+//        // ① シルエット本体を初期化
 //        if let base = baseSilhouetteImage {
 //            silhouetteImage = base
 //        }
+//        
+//        // ② ズーム・位置・回転などを初期化
+//        zoomScale = 1.0
+//        lastZoomScale = 1.0
+//        dragOffset = .zero
+//        lastDragOffset = .zero
+//        rotationAngle = .zero
+//        scaleX = 1; scaleY = 1
+//        
+//        // ③ 幅/高さを「元解像度」に戻す（上限/下限でクランプ）
+//        var w = originalWidthPx
+//        var h = originalHeightPx
+//        w = min(max(w, minPx), maxPx)
+//        h = min(max(h, minPx), maxPx)
+//        
+//        // 数値State反映
+//        targetWidthPx = w
+//        targetHeightPx = h
+//        editingWidthPx = w
+//        editingHeightPx = h
+//        
+//        // 表示文字列も同期（TextFieldが厳密制御なのでここはクランプ値を入れる）
+//        let wStr = String(Int(w.rounded()))
+//        let hStr = String(Int(h.rounded()))
+//        widthText = wStr
+//        heightText = hStr
+//        lastValidWidthText = wStr
+//        lastValidHeightText = hStr
 //    }
 //    
 //    // MARK: - Image Transforms
+//    
 //    private func transformed(image: UIImage, rotation: CGFloat) -> UIImage? {
 //        let size = CGSize(width: image.size.height, height: image.size.width)
 //        let renderer = UIGraphicsImageRenderer(size: size)
@@ -379,6 +619,7 @@
 //                                  height: image.size.height))
 //        }
 //    }
+//    
 //    private func flipped(image: UIImage, horizontal: Bool) -> UIImage? {
 //        let renderer = UIGraphicsImageRenderer(size: image.size)
 //        return renderer.image { ctx in
@@ -392,7 +633,6 @@
 //            image.draw(at: .zero)
 //        }
 //    }
-//    
 //    
 //    // MARK: — 共有処理
 //    
@@ -470,6 +710,7 @@
 //            guard let img = image else { return }
 //            DispatchQueue.main.async {
 //                originalImage = img
+//                initSizeFromImage(img)
 //                processSilhouette(from: img)
 //            }
 //        }
@@ -494,7 +735,6 @@
 //        }
 //    }
 //    
-//    
 //    private func generatePersonMask(from uiImage: UIImage, completion: @escaping (CIImage?) -> Void) {
 //        guard let cgImage = uiImage.cgImage else { completion(nil); return }
 //        let request = VNGeneratePersonSegmentationRequest()
@@ -516,45 +756,6 @@
 //            }
 //        }
 //    }
-//    
-//    //    private func createSilhouette(from original: UIImage, maskCI: CIImage) -> UIImage? {
-//    //        let ciImage = CIImage(image: original)!
-//    //        // 黒/白塗りつぶし（マスクをそのまま使用）
-//    //        let black = CIImage(color: .black).cropped(to: ciImage.extent)
-//    //        let white = CIImage(color: .white).cropped(to: ciImage.extent)
-//    //        blendFilter.inputImage = black
-//    //        blendFilter.backgroundImage = white
-//    //        blendFilter.maskImage = maskCI
-//    //        guard let output = blendFilter.outputImage,
-//    //              let cg = ciContext.createCGImage(output, from: ciImage.extent)
-//    //        else { return nil }
-//    //        return UIImage(cgImage: cg)
-//    //    }
-//    
-//    //    private func createSilhouette(from original: UIImage, maskCI: CIImage) -> UIImage? {
-//    //        let ciImage = CIImage(image: original)!
-//    //        // マスクを元画像サイズにスケーリング
-//    //        let maskExtent = maskCI.extent
-//    //        let scaleX = ciImage.extent.width / maskExtent.width
-//    //        let scaleY = ciImage.extent.height / maskExtent.height
-//    //        let scaledMask = maskCI.transformed(by: CGAffineTransform(scaleX: scaleX, y: scaleY))
-//    //
-//    //        // 二値化
-//    //        thresholdFilter.inputImage = scaledMask
-//    //        thresholdFilter.minComponents = CIVector(x: 0.5, y: 0.5, z: 0.5, w: 0.5)
-//    //        thresholdFilter.maxComponents = CIVector(x: 1,   y: 1,   z: 1,   w: 1)
-//    //        guard let binaryMask = thresholdFilter.outputImage else { return nil }
-//    //        // 黒/白塗りつぶし
-//    //        let black = CIImage(color: .black).cropped(to: ciImage.extent)
-//    //        let white = CIImage(color: .white).cropped(to: ciImage.extent)
-//    //        blendFilter.inputImage = black
-//    //        blendFilter.backgroundImage = white
-//    //        blendFilter.maskImage = binaryMask
-//    //        guard let output = blendFilter.outputImage,
-//    //              let cg = ciContext.createCGImage(output, from: ciImage.extent)
-//    //        else { return nil }
-//    //        return UIImage(cgImage: cg)
-//    //    }
 //    
 //    private func createSilhouette(from original: UIImage, maskCI: CIImage) -> UIImage? {
 //        // 元画像と同じ解像度・向きでCIImage作成
@@ -581,30 +782,235 @@
 //    
 //    // MARK: — Save / Share
 //    
+//    // 1) 保存フロー本体（ボタンからこれを呼ぶ）
 //    private func saveImage() {
-//        guard let sil = silhouetteImage else { return }
+//        // ① ローディング表示
 //        isProcessing = true
-//        UIImageWriteToSavedPhotosAlbum(sil, nil, nil, nil)
-//        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-//            isProcessing = false
-//            showSavedToast = true
-//            DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
-//                showSavedToast = false
-//                if Int.random(in: 1 ... 2) == 1 { adViewModel.showAd() }
+//        
+//        // ② 画像生成は必ずメインスレッド
+//        DispatchQueue.main.async {
+//            guard let img = exportImage() else {
+//                isProcessing = false
+//                return
+//            }
+//            
+//            // ③ バックグラウンドでカメラロール保存（完了はハンドラで受ける）
+//            DispatchQueue.global(qos: .userInitiated).async {
+//                PHPhotoLibrary.shared().performChanges({
+//                    PHAssetChangeRequest.creationRequestForAsset(from: img)
+//                }) { success, error in
+//                    DispatchQueue.main.async {
+//                        isProcessing = false
+//                        
+//                        // 失敗時は即終了（必要ならエラー表示）
+//                        guard error == nil, success else {
+//                            // TODO: エラーToastなど
+//                            return
+//                        }
+//                        
+//                        // ④ 広告 or トースト
+//                        let showAdNow = Int.random(in: 1 ... 3) == 1
+//                        
+//                        let showToast: () -> Void = {
+//                            withAnimation { showSavedToast = true }
+//                            // 2秒後に自動で閉じる
+//                            DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
+//                                withAnimation { showSavedToast = false }
+//                            }
+//                        }
+//                        
+//                        if showAdNow {
+//                            // Interstitial の dismiss コールバックがある前提
+//                            adViewModel.onAdDismissed = { showToast() }
+//                            adViewModel.showAd()
+//                        } else {
+//                            showToast()
+//                        }
+//                    }
+//                }
 //            }
 //        }
 //    }
 //    
 //    private func shareImage() {
-//        guard let sil = silhouetteImage else { return }
+//        // ① まずフラグON（UIに“処理中”を描かせる）
 //        isProcessing = true
-//        let name = "silhouette_" + UUID().uuidString + ".png"
-//        let url = FileManager.default.temporaryDirectory.appendingPathComponent(name)
-//        if let data = sil.pngData() {
-//            try? data.write(to: url)
-//            shareItems = [url]
-//            showingShareSheet = true
+//        
+//        // ② 1フレームあとに処理開始（オーバーレイが確実に出る）
+//        DispatchQueue.main.async {
+//            // ③ 重い処理はバックグラウンドへ
+//            DispatchQueue.global(qos: .userInitiated).async {
+//                // ※ UIGraphicsImageRenderer を使っている exportImage() は
+//                //   できればメインでやるのが無難ですが、実運用では BG でも動くことが多いです。
+//                //   もし端末で問題が出る場合は exportImage() 部分だけ main.async で実行してください。
+//                guard let img = exportImage(),
+//                      let data = img.pngData() else {
+//                    DispatchQueue.main.async { isProcessing = false }
+//                    return
+//                }
+//                
+//                let url = FileManager.default.temporaryDirectory
+//                    .appendingPathComponent("silhouette_\(UUID()).png")
+//                
+//                do {
+//                    try data.write(to: url)
+//                } catch {
+//                    DispatchQueue.main.async { isProcessing = false }
+//                    return
+//                }
+//                
+//                // ④ UI更新はメインに戻す
+//                DispatchQueue.main.async {
+//                    shareItems = [url]
+//                    showingShareSheet = true
+//                    isProcessing = false
+//                }
+//            }
 //        }
-//        isProcessing = false
 //    }
+//    
+//    //    private func shareImage() {
+//    //        isProcessing = true
+//    //
+//    //        guard let img = exportImage(),
+//    //              let data = img.pngData()
+//    //        else {
+//    //            isProcessing = false
+//    //            return
+//    //        }
+//    //
+//    //        let url = FileManager.default
+//    //            .temporaryDirectory
+//    //            .appendingPathComponent("silhouette_\(UUID()).png")
+//    //        try? data.write(to: url)
+//    //        shareItems = [url]
+//    //        showingShareSheet = true
+//    //        isProcessing = false
+//    //    }
+//    
+//    /// 現在のコンテナ実寸とユーザー指定 px から、
+//    /// プレビューで実際に使うフレーム実寸(pt)を再計算する
+//    private func recalcFramePt(container: CGSize) -> CGSize {
+//        guard container.width > 0, container.height > 0 else { return .zero }
+//        let scale = UIScreen.main.scale
+//        let desiredW = CGFloat(targetWidthPx)/scale // 指定px → pt
+//        let desiredH = CGFloat(targetHeightPx)/scale
+//        
+//        let frameRatio = desiredW/desiredH
+//        let screenRatio = container.width/container.height
+//        
+//        if frameRatio > screenRatio {
+//            let w = min(desiredW, container.width)
+//            return CGSize(width: w, height: w/frameRatio)
+//        } else {
+//            let h = min(desiredH, container.height)
+//            return CGSize(width: h * frameRatio, height: h)
+//        }
+//    }
+//    
+//    /// プレビュー時の state（offset, zoomScale, rotationAngle, scaleX/Y）を
+//    private func exportImage() -> UIImage? {
+//        guard let src = silhouetteImage?.normalized() else { return nil }
+//        
+//        let outW = CGFloat(targetWidthPx)
+//        let outH = CGFloat(targetHeightPx)
+//        
+//        // フレーム実寸（pt）を取得。ダメなら式で再計算してフォールバック
+//        var framePt = previewFramePt
+//        if framePt.width < 10 || framePt.height < 10 || framePt == .init(width: 100, height: 100) {
+//            framePt = recalcFramePt(container: previewContainerPt)
+//        }
+//        guard framePt.width > 0, framePt.height > 0 else { return nil }
+//        
+//        // pt→px 係数（X/Y 別）
+//        let kx = outW/framePt.width
+//        let ky = outH/framePt.height
+//        
+//        // 画像サイズ（px）
+//        let imgPxW = src.size.width * src.scale
+//        let imgPxH = src.size.height * src.scale
+//        
+//        // プレビューと同じ aspectFit（px基準にして OK）
+//        let fitScalePx = min(outW/imgPxW, outH/imgPxH)
+//        let totalScaleX = fitScalePx * zoomScale
+//        let totalScaleY = fitScalePx * zoomScale
+//        
+//        // ドラッグ量：pt → px
+//        let offsetXPx = dragOffset.width * kx
+//        let offsetYPx = dragOffset.height * ky
+//        
+//        let fmt = UIGraphicsImageRendererFormat()
+//        fmt.opaque = false
+//        fmt.scale = 1
+//        let renderer = UIGraphicsImageRenderer(size: CGSize(width: outW, height: outH), format: fmt)
+//        
+//        return renderer.image { ctx in
+//            let c = ctx.cgContext
+//            c.translateBy(x: outW/2, y: outH/2)
+//            c.translateBy(x: offsetXPx, y: offsetYPx)
+//            c.scaleBy(x: totalScaleX, y: totalScaleY)
+//            c.translateBy(x: -imgPxW/2, y: -imgPxH/2)
+//            src.draw(in: CGRect(x: 0, y: 0, width: imgPxW, height: imgPxH))
+//        }
+//    }
+//    
+//    // 数字だけにして先頭ゼロを整理（"" は許可）
+//    private func sanitizeDigits(_ s: String) -> String {
+//        let digits = s.filter { $0.isNumber }
+//        if digits.isEmpty { return "" } // 入力中の空文字は許容
+//        // 先頭の連続する0は落とす。ただし全部0なら"0"
+//        let trimmed = digits.drop(while: { $0 == "0" })
+//        return trimmed.isEmpty ? "0" : String(trimmed)
+//    }
+//}
+//
+//extension UIApplication {
+//    /// キーボードを閉じる
+//    func endEditing() {
+//        sendAction(
+//            #selector(UIResponder.resignFirstResponder),
+//            to: nil,
+//            from: nil,
+//            for: nil
+//        )
+//    }
+//}
+//
+//extension UIImage {
+//    /// orientation が .up 以外の場合は再描画して .up にする
+//    func normalized() -> UIImage {
+//        guard imageOrientation != .up else { return self }
+//        UIGraphicsBeginImageContextWithOptions(size, false, scale)
+//        draw(in: CGRect(origin: .zero, size: size))
+//        let img = UIGraphicsGetImageFromCurrentImageContext()!
+//        UIGraphicsEndImageContext()
+//        return img
+//    }
+//}
+//
+//struct KeyboardWarmer: UIViewRepresentable {
+//    private static var warmed = false
+//    
+//    func makeUIView(context: Context) -> UIView {
+//        let container = UIView(frame: .zero)
+//        
+//        guard !Self.warmed else { return container }
+//        
+//        // 隠しTextFieldで一瞬だけキーボードを開いて閉じる
+//        let tf = UITextField(frame: .zero)
+//        tf.isHidden = true
+//        container.addSubview(tf)
+//        
+//        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+//            tf.becomeFirstResponder()
+//            DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+//                tf.resignFirstResponder()
+//                tf.removeFromSuperview()
+//                Self.warmed = true
+//            }
+//        }
+//        return container
+//    }
+//    
+//    func updateUIView(_ uiView: UIView, context: Context) {}
 //}

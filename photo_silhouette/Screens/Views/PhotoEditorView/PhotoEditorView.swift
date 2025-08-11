@@ -106,7 +106,7 @@ struct PhotoEditorView: View {
             // メインコンテンツ
             VStack(spacing: 0) {
                 // 0. モード切替（After / Before）
-//                modeSwitcher
+                //                modeSwitcher
 
                 // 0. サイズパネル
                 sizePanel
@@ -171,9 +171,16 @@ struct PhotoEditorView: View {
         .onAppear {
             // 初期化完了済の場合はスキップ
             guard !didInitialize else { return }
+            
+            isProcessing = true
 
             editingWidthPx = targetWidthPx
             editingHeightPx = targetHeightPx
+
+            // スクショ用（一時的に使用）
+//            if let asst = asset {
+//                loadImage(from: asst)
+//            }
 
             if let img = capturedUIImage {
                 originalImage = img
@@ -239,10 +246,10 @@ struct PhotoEditorView: View {
     /// UIImage の pixel サイズを State にセットする
     private func initSizeFromImage(_ img: UIImage) {
         if let cg = img.cgImage {
-//            targetWidthPx = Double(cg.width)
-//            targetHeightPx = Double(cg.height)
-//            editingWidthPx = targetWidthPx
-//            editingHeightPx = targetHeightPx
+            //            targetWidthPx = Double(cg.width)
+            //            targetHeightPx = Double(cg.height)
+            //            editingWidthPx = targetWidthPx
+            //            editingHeightPx = targetHeightPx
 
             let w = Double(cg.width)
             let h = Double(cg.height)
@@ -277,7 +284,7 @@ struct PhotoEditorView: View {
         .pickerStyle(.segmented)
         .padding(.horizontal, 16)
         .padding(.top, 8)
-//        .fixedSize() // 追加
+        //        .fixedSize() // 追加
     }
 
     // MARK: - サイズ調整
@@ -524,7 +531,7 @@ struct PhotoEditorView: View {
             Button(action: saveImage) {
                 HStack {
                     Image(systemName: "square.and.arrow.down")
-//                        .foregroundColor(.white)
+                    //                        .foregroundColor(.white)
                     Text("BUTTON_SAVE")
                 }
                 .frame(maxWidth: .infinity)
@@ -536,7 +543,7 @@ struct PhotoEditorView: View {
             Button(action: shareImage) {
                 HStack {
                     Image(systemName: "square.and.arrow.up")
-//                        .foregroundColor(.white)
+                    //                        .foregroundColor(.white)
                     Text("BUTTON_SHARE")
                 }
                 .frame(maxWidth: .infinity)
@@ -697,6 +704,8 @@ struct PhotoEditorView: View {
     // MARK: — PHAsset から UIImage を読み込む
 
     private func loadImage(from asset: PHAsset) {
+        isProcessing = true
+        
         let options = PHImageRequestOptions()
         options.isSynchronous = false
         options.deliveryMode = .highQualityFormat
@@ -707,7 +716,10 @@ struct PhotoEditorView: View {
             contentMode: .aspectFit,
             options: options
         ) { image, _ in
-            guard let img = image else { return }
+            guard let img = image else {
+                DispatchQueue.main.async { self.isProcessing = false }  
+                return
+            }
             DispatchQueue.main.async {
                 originalImage = img
                 initSizeFromImage(img)
@@ -869,24 +881,24 @@ struct PhotoEditorView: View {
         }
     }
 
-//    private func shareImage() {
-//        isProcessing = true
-//
-//        guard let img = exportImage(),
-//              let data = img.pngData()
-//        else {
-//            isProcessing = false
-//            return
-//        }
-//
-//        let url = FileManager.default
-//            .temporaryDirectory
-//            .appendingPathComponent("silhouette_\(UUID()).png")
-//        try? data.write(to: url)
-//        shareItems = [url]
-//        showingShareSheet = true
-//        isProcessing = false
-//    }
+    //    private func shareImage() {
+    //        isProcessing = true
+    //
+    //        guard let img = exportImage(),
+    //              let data = img.pngData()
+    //        else {
+    //            isProcessing = false
+    //            return
+    //        }
+    //
+    //        let url = FileManager.default
+    //            .temporaryDirectory
+    //            .appendingPathComponent("silhouette_\(UUID()).png")
+    //        try? data.write(to: url)
+    //        shareItems = [url]
+    //        showingShareSheet = true
+    //        isProcessing = false
+    //    }
 
     /// 現在のコンテナ実寸とユーザー指定 px から、
     /// プレビューで実際に使うフレーム実寸(pt)を再計算する
