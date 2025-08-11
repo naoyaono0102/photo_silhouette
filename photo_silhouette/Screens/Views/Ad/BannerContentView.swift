@@ -61,8 +61,8 @@ private struct BannerViewContainer: UIViewRepresentable {
         @MainActor
         private(set) lazy var bannerView: BannerView = {
             let banner = BannerView(adSize: parent.adSize)
-            banner.adUnitID = "ca-app-pub-3940256099942544/2435281174" // 検証用
-//            banner.adUnitID = "ca-app-pub-2366369828485169/8981692191" // 本番用
+//            banner.adUnitID = "ca-app-pub-3940256099942544/2435281174" // 検証用
+            banner.adUnitID = "ca-app-pub-2366369828485169/3786135445" // 本番用
             banner.load(Request())
             banner.delegate = self
             return banner

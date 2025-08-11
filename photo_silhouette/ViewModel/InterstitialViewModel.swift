@@ -16,8 +16,8 @@ class InterstitialViewModel: NSObject, ObservableObject, FullScreenContentDelega
         print("====全画面広告の読み込み処理実施====")
         do {
             interstitialAd = try await InterstitialAd.load(
-                with: "ca-app-pub-3940256099942544/4411468910", // 検証用
-//                with: "ca-app-pub-2366369828485169/8247195023", // 本番用
+//                with: "ca-app-pub-3940256099942544/4411468910", // 検証用
+                with: "ca-app-pub-2366369828485169/1159972104", // 本番用
                 request: Request())
             // [START set_the_delegate]
             interstitialAd?.fullScreenContentDelegate = self

@@ -133,7 +133,7 @@ struct PhotoEditorView: View {
             overlayViews
         }
         // 初回キーボード表示の遅延対策
-        .overlay(KeyboardWarmer().allowsHitTesting(false))
+//        .overlay(KeyboardWarmer().allowsHitTesting(false))
         // キーボード上部にツールバーを追加
         .toolbar {
             ToolbarItemGroup(placement: .keyboard) {
@@ -717,7 +717,7 @@ struct PhotoEditorView: View {
             options: options
         ) { image, _ in
             guard let img = image else {
-                DispatchQueue.main.async { self.isProcessing = false }  
+                DispatchQueue.main.async { self.isProcessing = false }
                 return
             }
             DispatchQueue.main.async {
@@ -821,7 +821,7 @@ struct PhotoEditorView: View {
                         }
 
                         // ④ 広告 or トースト
-                        let showAdNow = Int.random(in: 1 ... 3) == 1
+                        let showAdNow = Int.random(in: 1 ... 2) == 1
 
                         let showToast: () -> Void = {
                             withAnimation { showSavedToast = true }

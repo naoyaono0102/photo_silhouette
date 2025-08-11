@@ -40,10 +40,11 @@ struct MainStack: View {
             }
 
             // 広告ビュー
-//            BannerContentView()
-//                .background(Color("BackgroundColor"))
-//                .ignoresSafeArea(.keyboard, edges: .bottom)
+            BannerContentView()
+                .background(Color("BackgroundColor"))
+                .ignoresSafeArea(.keyboard, edges: .bottom)
         }
+        .ignoresSafeArea(.keyboard, edges: .bottom) // コンテンツの上にキーボードをかぶせる
     }
 }
 
